@@ -1,5 +1,10 @@
 package com.epam.research.job;
 
+import com.epam.research.agent.CoordinatorAgent;
+import com.epam.research.sse.SseService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -7,43 +12,51 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/jobs")
+@RequiredArgsConstructor
 public class JobController {
 
-    // POST /api/jobs/clarify        — get clarifying questions for a topic
-    // POST /api/jobs                — create a job and start the pipeline
-    // GET  /api/jobs                — list all jobs
-    // GET  /api/jobs/{id}           — get job details and report
-    // GET  /api/jobs/{id}/stream    — SSE stream for live log updates
+    private final JobService jobService;
+    private final CoordinatorAgent coordinatorAgent;
+    private final SseService sseService;
 
     @PostMapping("/clarify")
     public List<String> getClarificationQuestions(@RequestBody Map<String, String> body) {
-        // TODO: Delegate to JobService
-        throw new UnsupportedOperationException("Not implemented yet");
+        String topic = body.get("topic");
+        log.info("POST /api/jobs/clarify - topic: '{}'", topic);
+        return jobService.getClarificationQuestions(topic);
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @SuppressWarnings("unchecked")
     public Job createJob(@RequestBody Map<String, Object> body) {
-        // TODO: Delegate to JobService
-        throw new UnsupportedOperationException("Not implemented yet");
+        String topic = (String) body.get("topic");
+        Map<String, String> clarificationAnswers = (Map<String, String>) body.get("clarificationAnswers");
+        log.info("POST /api/jobs - topic: '{}'", topic);
+        Job job = jobService.createJob(topic, clarificationAnswers);
+        coordinatorAgent.runPipeline(job.getId(), topic, clarificationAnswers);
+        log.debug("Pipeline dispatched for job {}", job.getId());
+        return job;
     }
 
     @GetMapping
     public List<Job> getAllJobs() {
-        // TODO: Delegate to JobService
-        throw new UnsupportedOperationException("Not implemented yet");
+        log.debug("GET /api/jobs");
+        return jobService.getAllJobs();
     }
 
     @GetMapping("/{id}")
     public Job getJob(@PathVariable Long id) {
-        // TODO: Delegate to JobService
-        throw new UnsupportedOperationException("Not implemented yet");
+        log.debug("GET /api/jobs/{}", id);
+        return jobService.getJob(id);
     }
 
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs(@PathVariable Long id) {
-        // TODO: Register and return SSE emitter for this job
-        throw new UnsupportedOperationException("Not implemented yet");
+        log.debug("GET /api/jobs/{}/stream - SSE client connected", id);
+        return sseService.register(id);
     }
 }
