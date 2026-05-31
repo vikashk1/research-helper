@@ -1,3 +1,48 @@
+# ---- Secrets ----
 .env
+.env.*
+*.env
+application-local.properties
+application-local.yml
+
+# ---- Maven ----
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ---- IntelliJ IDEA ----
 .idea/
-research-helper.iml
+*.iml
+*.iws
+*.ipr
+out/
+
+# ---- VS Code ----
+.vscode/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Java ----
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# ---- Spring Boot ----
+spring-shell.log
+
+# ---- H2 database files (if persisted to disk) ----
+*.db
+*.mv.db
+*.trace.db
+
+# ---- Logs ----
+*.log
+logs/
