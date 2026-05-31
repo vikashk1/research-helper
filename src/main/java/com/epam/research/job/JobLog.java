@@ -19,7 +19,7 @@ public class JobLog {
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
     private LocalDateTime createdAt;
