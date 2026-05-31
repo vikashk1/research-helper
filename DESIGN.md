@@ -13,7 +13,7 @@
 | `config/AnthropicConfig.java` | ✅ Done |
 | `agent/ClarificationAgent.java` | ✅ Done (tested) |
 | `sse/SseService.java` | ✅ Done (tested) |
-| `agent/CoordinatorAgent.java` | 🔲 Stub |
+| `agent/CoordinatorAgent.java` | ✅ Done (tested) |
 | `agent/WebSearchAgent.java` | ✅ Done (tested) |
 | `agent/SummarizerAgent.java` | ✅ Done (tested) |
 | `agent/ReportFormatterAgent.java` | ✅ Done (tested) |

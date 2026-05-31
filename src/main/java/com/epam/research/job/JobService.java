@@ -49,4 +49,24 @@ public class JobService {
         jobLogRepository.save(log);
         sseService.emit(jobId, message);
     }
+
+    public void markInProgress(Long jobId) {
+        Job job = getJob(jobId);
+        job.setStatus(JobStatus.IN_PROGRESS);
+        jobRepository.save(job);
+    }
+
+    public void markCompleted(Long jobId, String report) {
+        Job job = getJob(jobId);
+        job.setStatus(JobStatus.COMPLETED);
+        job.setReport(report);
+        jobRepository.save(job);
+    }
+
+    public void markFailed(Long jobId, String reason) {
+        Job job = getJob(jobId);
+        job.setStatus(JobStatus.FAILED);
+        job.setErrorMessage(reason);
+        jobRepository.save(job);
+    }
 }
