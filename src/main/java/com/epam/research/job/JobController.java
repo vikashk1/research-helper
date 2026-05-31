@@ -54,6 +54,15 @@ public class JobController {
         return jobService.getJob(id);
     }
 
+    @PostMapping("/{id}/restart")
+    public Job restartJob(@PathVariable Long id) {
+        log.info("POST /api/jobs/{}/restart", id);
+        Job job = jobService.restartJob(id);
+        coordinatorAgent.runPipeline(job.getId(), job.getTopic(), job.getClarificationAnswers());
+        log.debug("Pipeline re-dispatched for job {}", id);
+        return job;
+    }
+
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs(@PathVariable Long id) {
         log.debug("GET /api/jobs/{}/stream - SSE client connected", id);

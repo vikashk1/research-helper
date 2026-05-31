@@ -116,6 +116,33 @@ class JobControllerTest {
     }
 
     @Test
+    void should_restartJobAndRePipelineAndReturn200_when_restartEndpointCalled() throws Exception {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTopic("climate change");
+        job.setStatus(JobStatus.PENDING);
+
+        when(jobService.restartJob(1L)).thenReturn(job);
+
+        mockMvc.perform(post("/api/jobs/1/restart"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+
+        verify(jobService).restartJob(1L);
+        verify(coordinatorAgent).runPipeline(eq(1L), eq("climate change"), any());
+    }
+
+    @Test
+    void should_return404_when_restartCalledForMissingJob() throws Exception {
+        when(jobService.restartJob(99L))
+                .thenThrow(new ResponseStatusException(NOT_FOUND, "Job not found: 99"));
+
+        mockMvc.perform(post("/api/jobs/99/restart"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void should_registerSseEmitter_when_streamEndpointCalled() throws Exception {
         when(sseService.register(1L)).thenReturn(new SseEmitter());
 

@@ -127,7 +127,9 @@ async function loadSidebar() {
       return `
         <div
           class="px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors group"
-          onclick="loadJob(${job.id}, '${escapeAttr(job.topic)}', '${job.status}')"
+          data-job-id="${job.id}"
+          data-job-status="${escapeAttr(job.status)}"
+          data-job-topic="${escapeAttr(job.topic)}"
           title="${escapeAttr(job.topic)}"
         >
           <div class="flex items-start justify-between gap-2">
@@ -139,6 +141,15 @@ async function loadSidebar() {
           </div>
         </div>`;
     }).join('');
+    list.querySelectorAll('[data-job-id]').forEach(el => {
+      el.addEventListener('click', () => {
+        loadJob(
+          parseInt(el.dataset.jobId, 10),
+          el.dataset.jobTopic,
+          el.dataset.jobStatus
+        );
+      });
+    });
   } catch (e) {
     list.innerHTML = `<p class="text-red-400 text-sm px-2 py-4 text-center">Failed to load jobs</p>`;
   }
@@ -408,7 +419,19 @@ async function fetchAndShowReport(jobId) {
   }
 }
 
-document.getElementById('try-again-btn').addEventListener('click', resetWizard);
+document.getElementById('try-again-btn').addEventListener('click', async () => {
+  if (!currentJobId) { resetWizard(); return; }
+  try {
+    const res = await fetch(`/api/jobs/${currentJobId}/restart`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    document.getElementById('log-box').innerHTML = '';
+    document.getElementById('step3-failed-panel').classList.add('hidden');
+    loadSidebar();
+    startLogStream(currentJobId);
+  } catch (e) {
+    alert('Failed to restart job: ' + e.message);
+  }
+});
 
 // ----------------------------------------------------------------
 // Step 4 — New Research

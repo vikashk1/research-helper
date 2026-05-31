@@ -125,6 +125,46 @@ class JobServiceTest {
                 .isInstanceOf(ResponseStatusException.class);
     }
 
+    // --- restartJob ---
+
+    @Test
+    void should_resetJobToPendingAndClearReportAndError_when_restarted() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setStatus(JobStatus.FAILED);
+        job.setReport("old report");
+        job.setErrorMessage("some error");
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Job result = jobService.restartJob(1L);
+
+        assertThat(result.getStatus()).isEqualTo(JobStatus.PENDING);
+        assertThat(result.getReport()).isNull();
+        assertThat(result.getErrorMessage()).isNull();
+    }
+
+    @Test
+    void should_deleteAllLogs_when_restarted() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setStatus(JobStatus.FAILED);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.restartJob(1L);
+
+        verify(jobLogRepository).deleteAllByJobId(1L);
+    }
+
+    @Test
+    void should_throwNotFoundException_when_jobNotFoundOnRestart() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.restartJob(99L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
     // --- createJob ---
 
     @Test
