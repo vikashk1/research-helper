@@ -17,20 +17,23 @@ public class SseService {
 
     public SseEmitter register(Long jobId) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.computeIfAbsent(jobId, id -> new CopyOnWriteArrayList<>()).add(emitter);
+        List<SseEmitter> list = emitters.computeIfAbsent(jobId, id -> new CopyOnWriteArrayList<>());
+        list.add(emitter);
+        log.info("SSE client registered for job {}, total clients: {}", jobId, list.size());
         return emitter;
     }
 
     public void emit(Long jobId, String message) {
         List<SseEmitter> jobEmitters = emitters.get(jobId);
         if (jobEmitters == null) {
+            log.debug("No SSE clients for job {}, skipping emit", jobId);
             return;
         }
         for (SseEmitter emitter : jobEmitters) {
             try {
                 emitter.send(SseEmitter.event().data(message));
             } catch (IOException e) {
-                log.debug("Emitter for job {} already completed, skipping", jobId);
+                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
             }
         }
     }
@@ -38,8 +41,10 @@ public class SseService {
     public void complete(Long jobId) {
         List<SseEmitter> jobEmitters = emitters.remove(jobId);
         if (jobEmitters == null) {
+            log.debug("No SSE clients to complete for job {}", jobId);
             return;
         }
+        log.info("Completing {} SSE client(s) for job {}", jobEmitters.size(), jobId);
         for (SseEmitter emitter : jobEmitters) {
             emitter.complete();
         }

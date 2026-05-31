@@ -21,6 +21,9 @@ public class WebSearchAgent {
     private final AnthropicClient anthropicClient;
 
     public String search(String topic, String clarificationContext) {
+        log.info("Starting web search for topic: '{}'", topic);
+        long start = System.currentTimeMillis();
+
         String userMessage = """
                 Topic: %s
                 Context: %s""".formatted(topic, clarificationContext);
@@ -33,11 +36,14 @@ public class WebSearchAgent {
                 .addUserMessage(userMessage)
                 .build();
 
-        return anthropicClient.messages().create(params)
+        String result = anthropicClient.messages().create(params)
                 .content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
+
+        log.info("Web search completed in {}ms, result length: {} chars", System.currentTimeMillis() - start, result.length());
+        return result;
     }
 }

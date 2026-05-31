@@ -22,6 +22,9 @@ public class ReportFormatterAgent {
     private final AnthropicClient anthropicClient;
 
     public String format(String topic, String clarificationContext, String summarizedContent) {
+        log.info("Formatting report for topic: '{}', summary length: {} chars", topic, summarizedContent.length());
+        long start = System.currentTimeMillis();
+
         String userMessage = """
                 Topic: %s
                 Context: %s
@@ -34,11 +37,14 @@ public class ReportFormatterAgent {
                 .addUserMessage(userMessage)
                 .build();
 
-        return anthropicClient.messages().create(params)
+        String report = anthropicClient.messages().create(params)
                 .content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
+
+        log.info("Report formatted in {}ms, report length: {} chars", System.currentTimeMillis() - start, report.length());
+        return report;
     }
 }

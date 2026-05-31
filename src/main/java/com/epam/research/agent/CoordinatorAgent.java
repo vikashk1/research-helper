@@ -3,6 +3,7 @@ package com.epam.research.agent;
 import com.epam.research.job.JobService;
 import com.epam.research.sse.SseService;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -39,12 +40,17 @@ public class CoordinatorAgent {
 
     @Async
     public void runPipeline(Long jobId, String topic, Map<String, String> clarificationAnswers) {
+        MDC.put("jobId", String.valueOf(jobId));
+        long pipelineStart = System.currentTimeMillis();
         try {
+            log.info("Pipeline started for job {} with topic: '{}'", jobId, topic);
             jobService.markInProgress(jobId);
 
             String context = clarificationAnswers.entrySet().stream()
                     .map(e -> "Q: " + e.getKey() + "\nA: " + e.getValue())
                     .collect(Collectors.joining("\n\n"));
+
+            log.debug("Clarification context built ({} Q&A pairs)", clarificationAnswers.size());
 
             String rawResults = withRetry(() -> webSearchAgent.search(topic, context));
             jobService.appendLog(jobId, "Search complete");
@@ -56,10 +62,13 @@ public class CoordinatorAgent {
 
             jobService.markCompleted(jobId, report);
             sseService.complete(jobId);
+            log.info("Pipeline completed for job {} in {}ms", jobId, System.currentTimeMillis() - pipelineStart);
         } catch (Exception e) {
-            log.error("Pipeline failed for job {}", jobId, e);
+            log.error("Pipeline failed for job {} after {}ms", jobId, System.currentTimeMillis() - pipelineStart, e);
             jobService.markFailed(jobId, e.getMessage());
             sseService.complete(jobId);
+        } finally {
+            MDC.remove("jobId");
         }
     }
 
@@ -72,7 +81,10 @@ public class CoordinatorAgent {
                 return action.call();
             } catch (Exception e) {
                 last = e;
-                if (i < attempts - 1 && delay > 0) Thread.sleep(delay);
+                if (i < attempts - 1) {
+                    log.warn("Action failed on attempt {}/{}, retrying in {}ms: {}", i + 1, attempts, delay, e.getMessage());
+                    if (delay > 0) Thread.sleep(delay);
+                }
                 delay *= 2;
             }
         }

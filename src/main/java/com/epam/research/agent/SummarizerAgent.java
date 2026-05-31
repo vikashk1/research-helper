@@ -21,6 +21,9 @@ public class SummarizerAgent {
     private final AnthropicClient anthropicClient;
 
     public String summarize(String topic, String clarificationContext, String rawSearchResults) {
+        log.info("Summarizing search results for topic: '{}', input length: {} chars", topic, rawSearchResults.length());
+        long start = System.currentTimeMillis();
+
         String userMessage = """
                 Topic: %s
                 Context: %s
@@ -33,11 +36,14 @@ public class SummarizerAgent {
                 .addUserMessage(userMessage)
                 .build();
 
-        return anthropicClient.messages().create(params)
+        String summary = anthropicClient.messages().create(params)
                 .content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
+
+        log.info("Summarization completed in {}ms, summary length: {} chars", System.currentTimeMillis() - start, summary.length());
+        return summary;
     }
 }
