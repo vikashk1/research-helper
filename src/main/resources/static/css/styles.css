@@ -1,23 +1,63 @@
-/* Scrollbar styling for log panel */
-#log-box::-webkit-scrollbar { width: 6px; }
-#log-box::-webkit-scrollbar-track { background: #1e293b; }
-#log-box::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+/* -----------------------------------------------------------------------
+ * CSS custom properties — light mode defaults
+ * ----------------------------------------------------------------------- */
+:root {
+  --color-surface:       #f1f5f9; /* slate-100 */
+  --color-surface-deep:  #e2e8f0; /* slate-200 */
+  --color-border:        #cbd5e1; /* slate-300 */
+  --color-code-bg:       #e2e8f0; /* slate-200 */
+  --color-code-block:    #f8fafc; /* slate-50  */
+  --color-scrollbar-track: #e2e8f0;
+  --color-scrollbar-thumb: #94a3b8; /* slate-400 */
+  --color-text-muted:    #64748b; /* slate-500 */
+  --color-link:          #2563eb; /* blue-600  */
+  --color-blockquote:    #475569; /* slate-600 */
+  --color-th-bg:         #e2e8f0; /* slate-200 */
+}
 
-/* Markdown report styling */
+/* -----------------------------------------------------------------------
+ * Dark mode overrides — activated by the OS / browser setting
+ * ----------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface:       #1e293b; /* slate-800 */
+    --color-surface-deep:  #0f172a; /* slate-900 */
+    --color-border:        #334155; /* slate-700 */
+    --color-code-bg:       #1e293b; /* slate-800 */
+    --color-code-block:    #0f172a; /* slate-900 */
+    --color-scrollbar-track: #1e293b;
+    --color-scrollbar-thumb: #475569; /* slate-600 */
+    --color-text-muted:    #94a3b8; /* slate-400 */
+    --color-link:          #60a5fa; /* blue-400  */
+    --color-blockquote:    #94a3b8; /* slate-400 */
+    --color-th-bg:         #1e293b; /* slate-800 */
+  }
+}
+
+/* -----------------------------------------------------------------------
+ * Scrollbar styling for log panel
+ * ----------------------------------------------------------------------- */
+#log-box::-webkit-scrollbar              { width: 6px; }
+#log-box::-webkit-scrollbar-track        { background: var(--color-scrollbar-track); }
+#log-box::-webkit-scrollbar-thumb        { background: var(--color-scrollbar-thumb); border-radius: 3px; }
+
+/* -----------------------------------------------------------------------
+ * Markdown report styling
+ * ----------------------------------------------------------------------- */
 #report-content h1 { font-size: 1.75rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
-#report-content h2 { font-size: 1.375rem; font-weight: 600; margin: 1.1rem 0 0.4rem; border-bottom: 1px solid #334155; padding-bottom: 0.25rem; }
+#report-content h2 { font-size: 1.375rem; font-weight: 600; margin: 1.1rem 0 0.4rem; border-bottom: 1px solid var(--color-border); padding-bottom: 0.25rem; }
 #report-content h3 { font-size: 1.125rem; font-weight: 600; margin: 0.9rem 0 0.3rem; }
-#report-content p { margin: 0.6rem 0; line-height: 1.7; }
+#report-content p  { margin: 0.6rem 0; line-height: 1.7; }
 #report-content ul, #report-content ol { margin: 0.5rem 0 0.5rem 1.5rem; }
 #report-content ul { list-style-type: disc; }
 #report-content ol { list-style-type: decimal; }
 #report-content li { margin: 0.25rem 0; line-height: 1.6; }
-#report-content pre { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 1rem; overflow-x: auto; margin: 0.75rem 0; }
+#report-content pre { background: var(--color-code-block); border: 1px solid var(--color-border); border-radius: 6px; padding: 1rem; overflow-x: auto; margin: 0.75rem 0; }
 #report-content code { font-family: 'Courier New', monospace; font-size: 0.875rem; }
-#report-content p code, #report-content li code { background: #1e293b; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85rem; }
-#report-content blockquote { border-left: 3px solid #3b82f6; padding-left: 1rem; color: #94a3b8; margin: 0.75rem 0; }
-#report-content a { color: #60a5fa; text-decoration: underline; }
-#report-content hr { border-color: #334155; margin: 1rem 0; }
+#report-content p code, #report-content li code { background: var(--color-code-bg); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85rem; }
+#report-content blockquote { border-left: 3px solid var(--color-link); padding-left: 1rem; color: var(--color-blockquote); margin: 0.75rem 0; }
+#report-content a  { color: var(--color-link); text-decoration: underline; }
+#report-content hr { border-color: var(--color-border); margin: 1rem 0; }
 #report-content table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; }
-#report-content th, #report-content td { border: 1px solid #334155; padding: 0.5rem 0.75rem; }
-#report-content th { background: #1e293b; font-weight: 600; }
+#report-content th, #report-content td { border: 1px solid var(--color-border); padding: 0.5rem 0.75rem; }
+#report-content th { background: var(--color-th-bg); font-weight: 600; }
