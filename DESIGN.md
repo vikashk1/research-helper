@@ -12,7 +12,7 @@
 | `job/JobService.java` | ✅ Done (tested) |
 | `config/AnthropicConfig.java` | ✅ Done |
 | `agent/ClarificationAgent.java` | ✅ Done (tested) |
-| `sse/SseService.java` | 🔲 Stub |
+| `sse/SseService.java` | ✅ Done (tested) |
 | `agent/CoordinatorAgent.java` | 🔲 Stub |
 | `agent/WebSearchAgent.java` | ✅ Done (tested) |
 | `agent/SummarizerAgent.java` | ✅ Done (tested) |
