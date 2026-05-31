@@ -124,11 +124,10 @@ async function loadSidebar() {
       const truncated = job.topic && job.topic.length > 32
         ? job.topic.slice(0, 32) + '...'
         : (job.topic || 'Untitled');
-      const clickable = job.status === 'COMPLETED';
       return `
         <div
-          class="px-3 py-2.5 rounded-lg cursor-${clickable ? 'pointer hover:bg-slate-700' : 'default'} transition-colors group"
-          ${clickable ? `onclick="loadJobReport(${job.id}, '${escapeAttr(job.topic)}')"` : ''}
+          class="px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors group"
+          onclick="loadJob(${job.id}, '${escapeAttr(job.topic)}', '${job.status}')"
           title="${escapeAttr(job.topic)}"
         >
           <div class="flex items-start justify-between gap-2">
@@ -157,16 +156,50 @@ function escapeAttr(str) {
   return String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-async function loadJobReport(jobId, topic) {
+async function loadJob(jobId, topic, status) {
   currentJobId = jobId;
   currentTopic = topic;
-  try {
-    const res = await fetch(`/api/jobs/${jobId}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const job = await res.json();
-    renderReport(job);
-  } catch (e) {
-    alert('Failed to load job report: ' + e.message);
+
+  if (status === 'COMPLETED') {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const job = await res.json();
+      renderReport(job);
+    } catch (e) {
+      alert('Failed to load job report: ' + e.message);
+    }
+    return;
+  }
+
+  const logBox      = document.getElementById('log-box');
+  const statusDot   = document.getElementById('log-status-dot');
+  const statusText  = document.getElementById('log-status-text');
+  const failedPanel = document.getElementById('step3-failed-panel');
+
+  logBox.innerHTML = '';
+  failedPanel.classList.add('hidden');
+  document.getElementById('step3-topic-label').textContent = `Topic: ${topic}`;
+  goToStep(3);
+
+  if (status === 'IN_PROGRESS') {
+    startLogStream(jobId);
+  } else if (status === 'PENDING') {
+    statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-slate-400 animate-pulse';
+    statusText.textContent = 'Waiting to start...';
+    appendLogLine(logBox, 'Job is queued and waiting to start...');
+  } else if (status === 'FAILED') {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const job = await res.json();
+      statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-red-400';
+      statusText.textContent = 'Pipeline failed.';
+      failedPanel.classList.remove('hidden');
+      document.getElementById('step3-error-msg').textContent = job.errorMessage || 'Pipeline failed.';
+    } catch (e) {
+      alert('Failed to load job details: ' + e.message);
+    }
   }
 }
 
