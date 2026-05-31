@@ -16,7 +16,7 @@
 | `agent/CoordinatorAgent.java` | 🔲 Stub |
 | `agent/WebSearchAgent.java` | ✅ Done (tested) |
 | `agent/SummarizerAgent.java` | ✅ Done (tested) |
-| `agent/ReportFormatterAgent.java` | 🔲 Stub |
+| `agent/ReportFormatterAgent.java` | ✅ Done (tested) |
 | `job/JobController.java` | 🔲 Stub |
 | `static/index.html` | 🔲 Stub |
 
