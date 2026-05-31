@@ -5,13 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Research Helper</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'media'
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body class="h-full bg-slate-900 text-slate-100 flex flex-col">
+<body class="h-full bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 flex flex-col">
 
   <!-- Header -->
-  <header class="bg-slate-800 border-b border-slate-700 px-6 py-3 flex items-center gap-3 shrink-0">
+  <header class="bg-slate-100 border-b border-slate-300 dark:bg-slate-800 dark:border-slate-700 px-6 py-3 flex items-center gap-3 shrink-0">
     <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
         d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347A3.16 3.16 0 0114 18.686V19a2 2 0 11-4 0v-.314a3.16 3.16 0 01-.929-2.243l-.347-.347z"/>
@@ -23,11 +28,11 @@
   <div class="flex flex-1 overflow-hidden">
 
     <!-- LEFT SIDEBAR -->
-    <aside class="w-72 bg-slate-800 border-r border-slate-700 flex flex-col shrink-0">
-      <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Past Jobs</span>
+    <aside class="w-72 bg-slate-100 border-r border-slate-300 dark:bg-slate-800 dark:border-slate-700 flex flex-col shrink-0">
+      <div class="px-4 py-3 border-b border-slate-300 dark:border-slate-700 flex items-center justify-between">
+        <span class="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Past Jobs</span>
         <button id="refresh-sidebar-btn"
-          class="text-slate-400 hover:text-slate-200 transition-colors"
+          class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
           title="Refresh job list">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -36,7 +41,7 @@
         </button>
       </div>
       <div id="job-list" class="flex-1 overflow-y-auto px-2 py-2 space-y-1">
-        <p class="text-slate-500 text-sm px-2 py-4 text-center">Loading jobs...</p>
+        <p class="text-slate-400 dark:text-slate-500 text-sm px-2 py-4 text-center">Loading jobs...</p>
       </div>
     </aside>
 
@@ -44,7 +49,7 @@
     <main class="flex-1 overflow-y-auto flex flex-col">
 
       <!-- Step indicator -->
-      <div class="bg-slate-800 border-b border-slate-700 px-8 py-4 shrink-0">
+      <div class="bg-slate-100 border-b border-slate-300 dark:bg-slate-800 dark:border-slate-700 px-8 py-4 shrink-0">
         <div class="flex items-center gap-0 max-w-2xl">
           <!-- Step dots -->
           <div id="step-indicators" class="flex items-center gap-0 w-full">
@@ -59,14 +64,14 @@
         <!-- STEP 1: Enter Topic -->
         <div id="step-1" class="step-panel">
           <h2 class="text-2xl font-bold mb-2">Enter Research Topic</h2>
-          <p class="text-slate-400 mb-6">Provide a topic and the system will ask clarifying questions to tailor the research.</p>
+          <p class="text-slate-500 dark:text-slate-400 mb-6">Provide a topic and the system will ask clarifying questions to tailor the research.</p>
 
-          <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
-            <label class="block text-sm font-medium text-slate-300 mb-2" for="topic-input">Research Topic</label>
+          <div class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-6">
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2" for="topic-input">Research Topic</label>
             <input id="topic-input" type="text"
               placeholder="e.g. Impact of quantum computing on modern cryptography"
-              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
-            <p id="step1-error" class="text-red-400 text-sm mt-2 hidden"></p>
+              class="w-full bg-white border border-slate-300 dark:bg-slate-700 dark:border-slate-600 rounded-lg px-4 py-3 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+            <p id="step1-error" class="text-red-600 dark:text-red-400 text-sm mt-2 hidden"></p>
             <div class="mt-5 flex items-center gap-4">
               <button id="clarify-btn"
                 class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
@@ -83,11 +88,11 @@
         <!-- STEP 2: Clarifying Questions -->
         <div id="step-2" class="step-panel hidden">
           <h2 class="text-2xl font-bold mb-2">Answer Clarifying Questions</h2>
-          <p class="text-slate-400 mb-6">Your answers help narrow down the research scope.</p>
+          <p class="text-slate-500 dark:text-slate-400 mb-6">Your answers help narrow down the research scope.</p>
 
-          <div class="bg-slate-800 rounded-xl border border-slate-700 p-6">
+          <div class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-6">
             <div id="questions-container" class="space-y-5"></div>
-            <p id="step2-error" class="text-red-400 text-sm mt-2 hidden"></p>
+            <p id="step2-error" class="text-red-600 dark:text-red-400 text-sm mt-2 hidden"></p>
             <div class="mt-6 flex items-center gap-4">
               <button id="start-pipeline-btn"
                 class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
@@ -98,7 +103,7 @@
                 </svg>
               </button>
               <button id="back-to-step1-btn"
-                class="text-slate-400 hover:text-slate-200 text-sm transition-colors">
+                class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-sm transition-colors">
                 Back
               </button>
             </div>
@@ -108,23 +113,23 @@
         <!-- STEP 3: Live Log Stream -->
         <div id="step-3" class="step-panel hidden">
           <h2 class="text-2xl font-bold mb-2">Running Research Pipeline</h2>
-          <p id="step3-topic-label" class="text-slate-400 mb-6"></p>
+          <p id="step3-topic-label" class="text-slate-500 dark:text-slate-400 mb-6"></p>
 
-          <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-            <div class="border-b border-slate-700 px-4 py-2.5 flex items-center gap-2">
+          <div class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden">
+            <div class="border-b border-slate-300 dark:border-slate-700 px-4 py-2.5 flex items-center gap-2">
               <div id="log-status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></div>
-              <span id="log-status-text" class="text-sm text-slate-300 font-medium">Pipeline running...</span>
+              <span id="log-status-text" class="text-sm text-slate-600 dark:text-slate-300 font-medium">Pipeline running...</span>
             </div>
             <div id="log-box"
-              class="h-96 overflow-y-auto bg-slate-900 p-4 font-mono text-sm text-slate-300 space-y-0.5">
+              class="h-96 overflow-y-auto bg-slate-200 dark:bg-slate-900 p-4 font-mono text-sm text-slate-700 dark:text-slate-300 space-y-0.5">
             </div>
           </div>
 
-          <div id="step3-failed-panel" class="hidden mt-5 bg-red-900/40 border border-red-700 rounded-xl p-5">
-            <p class="text-red-300 font-semibold mb-1">Pipeline Failed</p>
-            <p id="step3-error-msg" class="text-red-400 text-sm mb-4"></p>
+          <div id="step3-failed-panel" class="hidden mt-5 bg-red-100 border border-red-300 dark:bg-red-900/40 dark:border-red-700 rounded-xl p-5">
+            <p class="text-red-700 dark:text-red-300 font-semibold mb-1">Pipeline Failed</p>
+            <p id="step3-error-msg" class="text-red-600 dark:text-red-400 text-sm mb-4"></p>
             <button id="try-again-btn"
-              class="bg-red-700 hover:bg-red-600 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm">
+              class="bg-red-600 hover:bg-red-500 dark:bg-red-700 dark:hover:bg-red-600 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm">
               Try Again
             </button>
           </div>
@@ -135,7 +140,7 @@
           <div class="flex items-center justify-between mb-6">
             <div>
               <h2 class="text-2xl font-bold mb-1">Research Report</h2>
-              <p id="step4-topic-label" class="text-slate-400 text-sm"></p>
+              <p id="step4-topic-label" class="text-slate-500 dark:text-slate-400 text-sm"></p>
             </div>
             <button id="new-research-btn"
               class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm flex items-center gap-2">
@@ -147,7 +152,7 @@
           </div>
 
           <div id="report-content"
-            class="bg-slate-800 rounded-xl border border-slate-700 p-7 text-slate-200 leading-relaxed">
+            class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-7 text-slate-800 dark:text-slate-200 leading-relaxed">
           </div>
         </div>
 
