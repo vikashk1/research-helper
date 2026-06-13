@@ -38,6 +38,4 @@ API docs available at `http://localhost:8080/swagger-ui/index.html`.
    - Check **Enable EnvFile**
    - Click `+` and add your `.env` file
 
-   ![Run Configuration](docs/run-config.png)
-
 4. Click **Run**.
