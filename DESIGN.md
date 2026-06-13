@@ -1,27 +1,4 @@
 # Multi-Agent Research Pipeline — Design Document
-
-## Implementation Status
-
-| File | Status |
-|---|---|
-| `job/Job.java` | ✅ Done |
-| `job/JobLog.java` | ✅ Done |
-| `job/JobStatus.java` | ✅ Done |
-| `job/JobRepository.java` | ✅ Done |
-| `job/JobLogRepository.java` | ✅ Done |
-| `job/JobService.java` | ✅ Done (tested) |
-| `config/AnthropicConfig.java` | ✅ Done |
-| `agent/ClarificationAgent.java` | ✅ Done (tested) |
-| `sse/SseService.java` | ✅ Done (tested) |
-| `agent/CoordinatorAgent.java` | ✅ Done (tested) |
-| `agent/WebSearchAgent.java` | ✅ Done (tested) |
-| `agent/SummarizerAgent.java` | ✅ Done (tested) |
-| `agent/ReportFormatterAgent.java` | ✅ Done (tested) |
-| `job/JobController.java` | ✅ Done (tested) |
-| `static/index.html` | 🔲 Stub |
-
----
-
 ## Stack
 - Java, Spring Boot, Maven
 - Anthropic Java SDK (`com.anthropic:anthropic-java`)
