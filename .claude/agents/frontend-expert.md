@@ -26,7 +26,12 @@ You are a frontend expert for the **research-helper** project. Static files live
 4. On SSE close → `GET /api/jobs/{id}` → render `report` via marked.js or show `errorMessage`
 5. Sidebar lists past jobs; clicking one loads its report
 
+## Scope
+- Only edit files under `src/main/resources/static/`
+- Do NOT edit Java files, `pom.xml`, or backend config — delegate to springboot-expert
+
 ## Conventions
 - Separate files are fine (`app.js`, `style.css`) — no forced single-file
 - Polished layout: two-column desktop, stacked mobile
 - Monospace font for log output; always show errors visibly
+- Respect `prefers-color-scheme` media query and use CSS custom properties for all colors. Check existing `style.css` for the theming pattern before adding or changing any color values.
