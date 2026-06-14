@@ -48,9 +48,40 @@ class WebSearchAgentTest {
     void should_returnSearchResults_when_validTopicAndContextProvided() {
         stubApiCall("Found relevant results about climate change research.");
 
-        String result = webSearchAgent.search("climate change", "focus on 2020-2025, academic sources");
+        SearchResult result = webSearchAgent.search("climate change", "focus on 2020-2025, academic sources");
 
-        assertThat(result).isEqualTo("Found relevant results about climate change research.");
+        assertThat(result.content()).isEqualTo("Found relevant results about climate change research.");
+        assertThat(result.sourceUrls()).isEmpty();
+    }
+
+    @Test
+    void should_extractSourceUrls_when_responseContainsSourcesSection() {
+        String responseWithSources = """
+                Key findings about climate change.
+
+                SOURCES:
+                - https://nasa.gov/climate
+                - https://ipcc.ch/reports
+                """;
+        stubApiCall(responseWithSources);
+
+        SearchResult result = webSearchAgent.search("climate change", "context");
+
+        assertThat(result.sourceUrls()).containsExactly(
+                "https://nasa.gov/climate",
+                "https://ipcc.ch/reports");
+        assertThat(result.content()).contains("Key findings about climate change.")
+                .doesNotContain("SOURCES:");
+    }
+
+    @Test
+    void should_returnEmptySourceUrls_when_noSourcesSectionPresent() {
+        stubApiCall("Results without a sources section.");
+
+        SearchResult result = webSearchAgent.search("topic", "context");
+
+        assertThat(result.sourceUrls()).isEmpty();
+        assertThat(result.content()).isEqualTo("Results without a sources section.");
     }
 
     @Test
@@ -100,9 +131,10 @@ class WebSearchAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = webSearchAgent.search("topic", "context");
+        SearchResult result = webSearchAgent.search("topic", "context");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
+        assertThat(result.sourceUrls()).isEmpty();
     }
 
     @Test
@@ -112,9 +144,10 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = webSearchAgent.search("topic", "context");
+        SearchResult result = webSearchAgent.search("topic", "context");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
+        assertThat(result.sourceUrls()).isEmpty();
     }
 
     @Test
@@ -130,8 +163,8 @@ class WebSearchAgentTest {
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Second part.");
 
-        String result = webSearchAgent.search("topic", "context");
+        SearchResult result = webSearchAgent.search("topic", "context");
 
-        assertThat(result).contains("First part.").contains("Second part.");
+        assertThat(result.content()).contains("First part.").contains("Second part.");
     }
 }

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyString;
@@ -35,6 +36,9 @@ class CoordinatorAgentTest {
             "What time period?", "2020-2025"
     );
 
+    private static final SearchResult SEARCH_RESULT = new SearchResult("raw results", List.of());
+    private static final SummaryResult SUMMARY_RESULT = new SummaryResult("summary", List.of());
+
     @BeforeEach
     void setUp() {
         // retryDelayMs=0 so retry tests run instantly
@@ -43,9 +47,9 @@ class CoordinatorAgentTest {
     }
 
     private void stubHappyPath() {
-        when(webSearchAgent.search(anyString(), anyString())).thenReturn("raw results");
-        when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+        when(webSearchAgent.search(anyString(), anyString())).thenReturn(SEARCH_RESULT);
+        when(summarizerAgent.summarize(anyString(), anyString(), eq(SEARCH_RESULT))).thenReturn(SUMMARY_RESULT);
+        when(reportFormatterAgent.format(anyString(), anyString(), eq(SUMMARY_RESULT))).thenReturn("# Report");
     }
 
     @Test
@@ -85,9 +89,9 @@ class CoordinatorAgentTest {
     void should_succeedAfterRetry_when_searchFailsOnFirstAttempt() {
         when(webSearchAgent.search(anyString(), anyString()))
                 .thenThrow(new RuntimeException("temporary"))
-                .thenReturn("raw results");
-        when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+                .thenReturn(SEARCH_RESULT);
+        when(summarizerAgent.summarize(anyString(), anyString(), eq(SEARCH_RESULT))).thenReturn(SUMMARY_RESULT);
+        when(reportFormatterAgent.format(anyString(), anyString(), eq(SUMMARY_RESULT))).thenReturn("# Report");
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
@@ -101,8 +105,8 @@ class CoordinatorAgentTest {
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
         verify(webSearchAgent).search(eq(TOPIC), anyString());
-        verify(summarizerAgent).summarize(eq(TOPIC), anyString(), eq("raw results"));
-        verify(reportFormatterAgent).format(eq(TOPIC), anyString(), eq("summary"));
+        verify(summarizerAgent).summarize(eq(TOPIC), anyString(), eq(SEARCH_RESULT));
+        verify(reportFormatterAgent).format(eq(TOPIC), anyString(), eq(SUMMARY_RESULT));
     }
 
     @Test

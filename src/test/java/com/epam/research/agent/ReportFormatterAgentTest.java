@@ -46,19 +46,45 @@ class ReportFormatterAgentTest {
     @Test
     void should_returnFormattedReport_when_validInputsProvided() {
         stubApiCall("# Climate Change Report\n\n## Key Findings\n...");
+        SummaryResult summaryResult = new SummaryResult("Summarized content...", List.of());
 
         String result = reportFormatterAgent.format(
-                "climate change", "focus on 2020-2025", "Summarized content...");
+                "climate change", "focus on 2020-2025", summaryResult);
 
-        assertThat(result).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
+        assertThat(result).contains("# Climate Change Report").contains("## Key Findings");
+    }
+
+    @Test
+    void should_appendSourcesSection_when_summaryResultHasSources() {
+        stubApiCall("# Report\n\nSome content [1].");
+        SummaryResult summaryResult = new SummaryResult(
+                "summary", List.of("https://source1.com", "https://source2.com"));
+
+        String result = reportFormatterAgent.format("topic", "context", summaryResult);
+
+        assertThat(result)
+                .contains("## Sources")
+                .contains("[1] [https://source1.com](https://source1.com)")
+                .contains("[2] [https://source2.com](https://source2.com)");
+    }
+
+    @Test
+    void should_notAppendSourcesSection_when_summaryResultHasNoSources() {
+        stubApiCall("# Report\n\nContent without sources.");
+        SummaryResult summaryResult = new SummaryResult("summary", List.of());
+
+        String result = reportFormatterAgent.format("topic", "context", summaryResult);
+
+        assertThat(result).doesNotContain("## Sources");
     }
 
     @Test
     void should_includeTopicContextAndSummary_when_buildingApiRequest() {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+        SummaryResult summaryResult = new SummaryResult("summarized content here", List.of());
 
-        reportFormatterAgent.format("quantum computing", "target engineers", "summarized content here");
+        reportFormatterAgent.format("quantum computing", "target engineers", summaryResult);
 
         verify(messageService).create(captor.capture());
         String userMessage = captor.getValue().messages().get(0).content().asString();
@@ -72,8 +98,9 @@ class ReportFormatterAgentTest {
     void should_notIncludeAnyTool_when_buildingApiRequest() {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+        SummaryResult summaryResult = new SummaryResult("summary", List.of());
 
-        reportFormatterAgent.format("topic", "context", "summary");
+        reportFormatterAgent.format("topic", "context", summaryResult);
 
         verify(messageService).create(captor.capture());
         assertThat(captor.getValue().tools())
@@ -84,8 +111,9 @@ class ReportFormatterAgentTest {
     void should_useCorrectModelAndMaxTokens_when_buildingApiRequest() {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+        SummaryResult summaryResult = new SummaryResult("summary", List.of());
 
-        reportFormatterAgent.format("topic", "context", "summary");
+        reportFormatterAgent.format("topic", "context", summaryResult);
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
@@ -98,8 +126,9 @@ class ReportFormatterAgentTest {
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
+        SummaryResult summaryResult = new SummaryResult("summary", List.of());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format("topic", "context", summaryResult);
 
         assertThat(result).isEmpty();
     }
@@ -110,8 +139,9 @@ class ReportFormatterAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
+        SummaryResult summaryResult = new SummaryResult("summary", List.of());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format("topic", "context", summaryResult);
 
         assertThat(result).isEmpty();
     }
@@ -128,8 +158,9 @@ class ReportFormatterAgentTest {
         when(textBlock.text()).thenReturn("# Section One");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("## Section Two");
+        SummaryResult summaryResult = new SummaryResult("summary", List.of());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format("topic", "context", summaryResult);
 
         assertThat(result).contains("# Section One").contains("## Section Two");
     }
