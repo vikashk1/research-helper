@@ -1,6 +1,9 @@
 package com.epam.research.agent;
 
 import com.epam.research.job.JobService;
+import com.epam.research.job.JobStage;
+import com.epam.research.job.PipelineStage;
+import com.epam.research.job.StageStatus;
 import com.epam.research.sse.SseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,7 +46,16 @@ class CoordinatorAgentTest {
                 jobService, webSearchAgent, summarizerAgent, reportFormatterAgent, sseService, 0L);
     }
 
+    private JobStage mockStage(PipelineStage stage) {
+        JobStage s = new JobStage();
+        s.setStage(stage);
+        s.setStatus(StageStatus.ACTIVE);
+        return s;
+    }
+
     private void stubHappyPath() {
+        when(jobService.startStage(eq(JOB_ID), any(PipelineStage.class)))
+                .thenAnswer(inv -> mockStage(inv.getArgument(1)));
         when(webSearchAgent.search(anyString(), anyString())).thenReturn("raw results");
         when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
         when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
@@ -71,6 +84,8 @@ class CoordinatorAgentTest {
 
     @Test
     void should_retryThreeTimes_and_markFailed_when_searchAlwaysFails() {
+        when(jobService.startStage(eq(JOB_ID), any(PipelineStage.class)))
+                .thenAnswer(inv -> mockStage(inv.getArgument(1)));
         when(webSearchAgent.search(anyString(), anyString()))
                 .thenThrow(new RuntimeException("search failed"));
 
@@ -83,6 +98,8 @@ class CoordinatorAgentTest {
 
     @Test
     void should_succeedAfterRetry_when_searchFailsOnFirstAttempt() {
+        when(jobService.startStage(eq(JOB_ID), any(PipelineStage.class)))
+                .thenAnswer(inv -> mockStage(inv.getArgument(1)));
         when(webSearchAgent.search(anyString(), anyString()))
                 .thenThrow(new RuntimeException("temporary"))
                 .thenReturn("raw results");
@@ -111,5 +128,36 @@ class CoordinatorAgentTest {
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
         verify(webSearchAgent).search(anyString(), contains("global"));
+    }
+
+    @Test
+    void should_startAllThreeStages_when_pipelineSucceeds() {
+        stubHappyPath();
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        verify(jobService).startStage(JOB_ID, PipelineStage.SEARCH);
+        verify(jobService).startStage(JOB_ID, PipelineStage.SUMMARIZE);
+        verify(jobService).startStage(JOB_ID, PipelineStage.FORMAT);
+    }
+
+    @Test
+    void should_completeAllThreeStages_when_pipelineSucceeds() {
+        stubHappyPath();
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        verify(jobService, times(3)).completeStage(eq(JOB_ID), any(JobStage.class));
+    }
+
+    @Test
+    void should_failSearchStage_when_searchAlwaysFails() {
+        when(jobService.startStage(eq(JOB_ID), any(PipelineStage.class)))
+                .thenAnswer(inv -> mockStage(inv.getArgument(1)));
+        when(webSearchAgent.search(anyString(), anyString()))
+                .thenThrow(new RuntimeException("search failed"));
+
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        verify(jobService).failStage(eq(JOB_ID), any(JobStage.class));
+        verify(jobService, times(0)).completeStage(any(), any());
     }
 }

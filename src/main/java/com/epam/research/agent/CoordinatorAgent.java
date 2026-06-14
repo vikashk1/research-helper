@@ -1,6 +1,8 @@
 package com.epam.research.agent;
 
 import com.epam.research.job.JobService;
+import com.epam.research.job.JobStage;
+import com.epam.research.job.PipelineStage;
 import com.epam.research.sse.SseService;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -52,13 +54,37 @@ public class CoordinatorAgent {
 
             log.debug("Clarification context built ({} Q&A pairs)", clarificationAnswers.size());
 
-            String rawResults = withRetry(() -> webSearchAgent.search(topic, context));
-            jobService.appendLog(jobId, "Search complete");
+            JobStage searchStage = jobService.startStage(jobId, PipelineStage.SEARCH);
+            String rawResults;
+            try {
+                rawResults = withRetry(() -> webSearchAgent.search(topic, context));
+                jobService.completeStage(jobId, searchStage);
+                jobService.appendLog(jobId, "Search complete");
+            } catch (Exception e) {
+                jobService.failStage(jobId, searchStage);
+                throw e;
+            }
 
-            String summary = withRetry(() -> summarizerAgent.summarize(topic, context, rawResults));
-            jobService.appendLog(jobId, "Summary complete");
+            JobStage summarizeStage = jobService.startStage(jobId, PipelineStage.SUMMARIZE);
+            String summary;
+            try {
+                summary = withRetry(() -> summarizerAgent.summarize(topic, context, rawResults));
+                jobService.completeStage(jobId, summarizeStage);
+                jobService.appendLog(jobId, "Summary complete");
+            } catch (Exception e) {
+                jobService.failStage(jobId, summarizeStage);
+                throw e;
+            }
 
-            String report = withRetry(() -> reportFormatterAgent.format(topic, context, summary));
+            JobStage formatStage = jobService.startStage(jobId, PipelineStage.FORMAT);
+            String report;
+            try {
+                report = withRetry(() -> reportFormatterAgent.format(topic, context, summary));
+                jobService.completeStage(jobId, formatStage);
+            } catch (Exception e) {
+                jobService.failStage(jobId, formatStage);
+                throw e;
+            }
 
             jobService.markCompleted(jobId, report);
             sseService.complete(jobId);

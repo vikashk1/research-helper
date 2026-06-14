@@ -18,6 +18,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +29,9 @@ class JobServiceTest {
 
     @Mock
     private JobLogRepository jobLogRepository;
+
+    @Mock
+    private JobStageRepository jobStageRepository;
 
     @Mock
     private ClarificationAgent clarificationAgent;
@@ -201,5 +205,141 @@ class JobServiceTest {
         Job result = jobService.createJob("AI trends", Map.of());
 
         assertThat(result.getId()).isEqualTo(42L);
+    }
+
+    // --- startStage ---
+
+    @Test
+    void should_persistActiveStage_when_stageStarted() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        JobStage result = jobService.startStage(1L, PipelineStage.SEARCH);
+
+        assertThat(result.getStage()).isEqualTo(PipelineStage.SEARCH);
+        assertThat(result.getStatus()).isEqualTo(StageStatus.ACTIVE);
+        assertThat(result.getStartedAt()).isNotNull();
+    }
+
+    @Test
+    void should_emitStageEvent_when_stageStarted() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.startStage(1L, PipelineStage.SEARCH);
+
+        verify(sseService).emitStageEvent(eq(1L), eq("stage"), any(StageEventDto.class));
+    }
+
+    // --- completeStage ---
+
+    @Test
+    void should_markStageCompleted_and_setCompletedAt() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.SEARCH);
+        stage.setStatus(StageStatus.ACTIVE);
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.completeStage(1L, stage);
+
+        assertThat(stage.getStatus()).isEqualTo(StageStatus.COMPLETED);
+        assertThat(stage.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void should_emitStageEvent_when_stageCompleted() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.SUMMARIZE);
+        stage.setStatus(StageStatus.ACTIVE);
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.completeStage(1L, stage);
+
+        ArgumentCaptor<StageEventDto> eventCaptor = ArgumentCaptor.forClass(StageEventDto.class);
+        verify(sseService).emitStageEvent(eq(1L), eq("stage"), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getStatus()).isEqualTo(StageStatus.COMPLETED);
+        assertThat(eventCaptor.getValue().getStage()).isEqualTo(PipelineStage.SUMMARIZE);
+    }
+
+    // --- failStage ---
+
+    @Test
+    void should_markStageFailed_and_setCompletedAt() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.FORMAT);
+        stage.setStatus(StageStatus.ACTIVE);
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.failStage(1L, stage);
+
+        assertThat(stage.getStatus()).isEqualTo(StageStatus.FAILED);
+        assertThat(stage.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void should_emitStageEvent_when_stageFailed() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.FORMAT);
+        stage.setStatus(StageStatus.ACTIVE);
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.failStage(1L, stage);
+
+        ArgumentCaptor<StageEventDto> eventCaptor = ArgumentCaptor.forClass(StageEventDto.class);
+        verify(sseService).emitStageEvent(eq(1L), eq("stage"), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getStatus()).isEqualTo(StageStatus.FAILED);
+    }
+
+    // --- getStages ---
+
+    @Test
+    void should_returnStagesForJob() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage s1 = new JobStage();
+        s1.setStage(PipelineStage.SEARCH);
+        s1.setStatus(StageStatus.COMPLETED);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findByJobIdOrderByStartedAtAsc(1L)).thenReturn(List.of(s1));
+
+        List<JobStage> result = jobService.getStages(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getStage()).isEqualTo(PipelineStage.SEARCH);
+    }
+
+    @Test
+    void should_throwNotFound_when_getStagesCalledForMissingJob() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.getStages(99L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    // --- restartJob clears stages ---
+
+    @Test
+    void should_deleteAllStages_when_restarted() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setStatus(JobStatus.FAILED);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.restartJob(1L);
+
+        verify(jobStageRepository).deleteAllByJobId(1L);
     }
 }

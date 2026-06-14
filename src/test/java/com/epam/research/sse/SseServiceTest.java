@@ -48,4 +48,16 @@ class SseServiceTest {
         SseEmitter fresh = sseService.register(1L);
         assertThat(fresh).isNotNull();
     }
+
+    @Test
+    void should_notThrow_when_emittingStageEventToUnknownJob() {
+        assertThatNoException().isThrownBy(() -> sseService.emitStageEvent(99L, "stage", "payload"));
+    }
+
+    @Test
+    void should_notThrow_when_emittingStageEventAfterJobCompleted() {
+        sseService.register(1L);
+        sseService.complete(1L);
+        assertThatNoException().isThrownBy(() -> sseService.emitStageEvent(1L, "stage", "payload"));
+    }
 }

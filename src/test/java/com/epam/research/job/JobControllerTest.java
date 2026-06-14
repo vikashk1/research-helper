@@ -152,4 +152,29 @@ class JobControllerTest {
 
         verify(sseService).register(1L);
     }
+
+    @Test
+    void should_returnStagesList_when_stagesEndpointCalled() throws Exception {
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.SEARCH);
+        stage.setStatus(StageStatus.COMPLETED);
+
+        when(jobService.getStages(1L)).thenReturn(List.of(stage));
+
+        mockMvc.perform(get("/api/jobs/1/stages"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stage").value("SEARCH"))
+                .andExpect(jsonPath("$[0].status").value("COMPLETED"));
+
+        verify(jobService).getStages(1L);
+    }
+
+    @Test
+    void should_return404_when_stagesCalledForMissingJob() throws Exception {
+        when(jobService.getStages(99L))
+                .thenThrow(new ResponseStatusException(NOT_FOUND, "Job not found: 99"));
+
+        mockMvc.perform(get("/api/jobs/99/stages"))
+                .andExpect(status().isNotFound());
+    }
 }

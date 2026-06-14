@@ -24,14 +24,22 @@ public class SseService {
     }
 
     public void emit(Long jobId, String message) {
+        sendEvent(jobId, "log", message);
+    }
+
+    public void emitStageEvent(Long jobId, String eventName, Object data) {
+        sendEvent(jobId, eventName, data);
+    }
+
+    private void sendEvent(Long jobId, String eventName, Object data) {
         List<SseEmitter> jobEmitters = emitters.get(jobId);
         if (jobEmitters == null) {
-            log.debug("No SSE clients for job {}, skipping emit", jobId);
+            log.debug("No SSE clients for job {}, skipping emit of event '{}'", jobId, eventName);
             return;
         }
         for (SseEmitter emitter : jobEmitters) {
             try {
-                emitter.send(SseEmitter.event().data(message));
+                emitter.send(SseEmitter.event().name(eventName).data(data));
             } catch (IOException e) {
                 log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
             }

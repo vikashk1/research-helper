@@ -2,6 +2,7 @@ package com.epam.research.job;
 
 import com.epam.research.agent.CoordinatorAgent;
 import com.epam.research.sse.SseService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ public class JobController {
     private final CoordinatorAgent coordinatorAgent;
     private final SseService sseService;
 
+    @Operation(summary = "Get clarification questions for a research topic")
     @PostMapping("/clarify")
     public List<String> getClarificationQuestions(@RequestBody Map<String, String> body) {
         String topic = body.get("topic");
@@ -29,6 +31,7 @@ public class JobController {
         return jobService.getClarificationQuestions(topic);
     }
 
+    @Operation(summary = "Create a new research job and start the pipeline")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @SuppressWarnings("unchecked")
@@ -42,18 +45,21 @@ public class JobController {
         return job;
     }
 
+    @Operation(summary = "List all research jobs")
     @GetMapping
     public List<Job> getAllJobs() {
         log.debug("GET /api/jobs");
         return jobService.getAllJobs();
     }
 
+    @Operation(summary = "Get a research job by ID")
     @GetMapping("/{id}")
     public Job getJob(@PathVariable Long id) {
         log.debug("GET /api/jobs/{}", id);
         return jobService.getJob(id);
     }
 
+    @Operation(summary = "Restart a failed or completed research job")
     @PostMapping("/{id}/restart")
     public Job restartJob(@PathVariable Long id) {
         log.info("POST /api/jobs/{}/restart", id);
@@ -63,9 +69,17 @@ public class JobController {
         return job;
     }
 
+    @Operation(summary = "Stream live log events for a job via SSE")
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs(@PathVariable Long id) {
         log.debug("GET /api/jobs/{}/stream - SSE client connected", id);
         return sseService.register(id);
+    }
+
+    @Operation(summary = "Get pipeline stage progress for a job")
+    @GetMapping("/{id}/stages")
+    public List<JobStage> getStages(@PathVariable Long id) {
+        log.debug("GET /api/jobs/{}/stages", id);
+        return jobService.getStages(id);
     }
 }
