@@ -11,15 +11,24 @@ export const meta = {
   ],
 }
 
-const ISSUE_SCHEMA = {
+const ISSUES_SCHEMA = {
   type: 'object',
   properties: {
-    number: { type: 'number' },
-    title: { type: 'string' },
-    labels: { type: 'array', items: { type: 'string' } },
-    ac: { type: 'array', items: { type: 'string' } },
+    issues: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          number: { type: 'number' },
+          title: { type: 'string' },
+          labels: { type: 'array', items: { type: 'string' } },
+          ac: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['number', 'title', 'ac'],
+      },
+    },
   },
-  required: ['number', 'title', 'ac'],
+  required: ['issues'],
 }
 
 const ESTIMATE_SCHEMA = {
@@ -83,10 +92,10 @@ Steps:
    Body must have ## Goal and ## Acceptance Criteria sections with checkboxes.
 5. Return the created issues as an array.
 
-Return an array of the issues you created (number, title, labels, and acceptance criteria as string array).`,
-    { label: 'product-manager', agentType: 'product-manager', schema: { type: 'array', items: ISSUE_SCHEMA } }
+Return the issues you created as {issues: [...]} with number, title, labels, and acceptance criteria (ac) as string array.`,
+    { label: 'product-manager', agentType: 'product-manager', schema: ISSUES_SCHEMA }
   )
-  validIssues = (created || []).filter(Boolean)
+  validIssues = (created && created.issues || []).filter(Boolean)
   log(`Created ${validIssues.length} issue(s)`)
 } else {
   log('No goal provided — picking from open backlog')
@@ -100,10 +109,10 @@ Steps:
 4. If a chosen issue lacks acceptance criteria in its body, add them via: gh issue comment <N> --body "## Acceptance Criteria\n- [ ] ..."
 5. Return the picked issues.
 
-Return an array of issues (number, title, labels, and acceptance criteria as string array).`,
-    { label: 'product-manager-pick', agentType: 'product-manager', schema: { type: 'array', items: ISSUE_SCHEMA } }
+Return the picked issues as {issues: [...]} with number, title, labels, and acceptance criteria (ac) as string array.`,
+    { label: 'product-manager-pick', agentType: 'product-manager', schema: ISSUES_SCHEMA }
   )
-  validIssues = (picked || []).filter(Boolean)
+  validIssues = (picked && picked.issues || []).filter(Boolean)
   log(`Picked ${validIssues.length} issue(s) from backlog`)
 }
 
