@@ -105,9 +105,9 @@ Return the issues you created as {issues: [...]} with number, title, labels, and
 Steps:
 1. Run: gh issue list --state open --json number,title,body,labels --limit 30
 2. Score issues by: priority label > bugs over features > age > clarity of acceptance criteria.
-3. Pick 1-3 highest-value issues that are ready to implement (have clear AC, aren't blocked).
-4. If a chosen issue lacks acceptance criteria in its body, add them via: gh issue comment <N> --body "## Acceptance Criteria\n- [ ] ..."
-5. Return the picked issues.
+3. Pick the single highest-value issue that is ready to implement (has clear AC, isn't blocked).
+4. If the chosen issue lacks acceptance criteria in its body, add them via: gh issue comment <N> --body "## Acceptance Criteria\n- [ ] ..."
+5. Return the picked issue.
 
 Return the picked issues as {issues: [...]} with number, title, labels, and acceptance criteria (ac) as string array.`,
     { label: 'product-manager-pick', agentType: 'product-manager', schema: ISSUES_SCHEMA }

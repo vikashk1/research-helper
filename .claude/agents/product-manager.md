@@ -17,7 +17,7 @@ You are the product manager for the **research-helper** project. You decide *wha
 ### Mode 2: Pick from backlog (no goal given)
 1. `gh issue list --state open --json number,title,body,labels --limit 30`
 2. Score by: priority label > bug over feature > age > clarity of AC.
-3. Pick the highest-value issue(s) that are ready to implement (have AC, aren't blocked).
+3. Pick the single highest-value issue that is ready to implement (has AC, isn't blocked).
 4. If the chosen issue lacks AC, add it via `gh issue comment`.
 
 ## Output Format (when creating new issues)
