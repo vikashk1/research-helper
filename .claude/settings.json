@@ -1,15 +1,31 @@
 {
   "permissions": {
     "allow": [
-      "mcp__playwright",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_press_key",
       "Bash(gh issue view *)",
       "Bash(gh issue list *)",
+      "Bash(gh issue create *)",
       "Bash(gh pr view *)",
       "Bash(gh pr list *)",
       "Bash(gh pr diff *)",
       "Bash(gh pr checks *)",
+      "Bash(gh pr checkout *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr review *)",
       "Bash(gh repo view *)",
-      "Bash(gh api * --method GET *)"
+      "Bash(gh api * --method GET *)",
+      "Bash(gh api repos/*/pulls/*/comments --method POST *)",
+      "Bash(mvn test *)",
+      "Bash(git log *)",
+      "Bash(git push *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)"
     ],
     "deny": [
       "Read(**/.env)",
