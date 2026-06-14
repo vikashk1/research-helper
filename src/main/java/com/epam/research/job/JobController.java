@@ -2,6 +2,7 @@ package com.epam.research.job;
 
 import com.epam.research.agent.CoordinatorAgent;
 import com.epam.research.sse.SseService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -52,6 +53,22 @@ public class JobController {
     public Job getJob(@PathVariable Long id) {
         log.debug("GET /api/jobs/{}", id);
         return jobService.getJob(id);
+    }
+
+    @Operation(summary = "Delete a job and its associated logs by ID")
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteJob(@PathVariable Long id) {
+        log.info("DELETE /api/jobs/{}", id);
+        jobService.deleteJob(id);
+    }
+
+    @Operation(summary = "Delete all completed jobs and their associated logs")
+    @DeleteMapping("/completed")
+    public Map<String, Integer> deleteAllCompleted() {
+        log.info("DELETE /api/jobs/completed");
+        int count = jobService.deleteAllCompleted();
+        return Map.of("deleted", count);
     }
 
     @PostMapping("/{id}/restart")

@@ -165,6 +165,56 @@ class JobServiceTest {
                 .isInstanceOf(ResponseStatusException.class);
     }
 
+    // --- deleteJob ---
+
+    @Test
+    void should_deleteLogsAndJob_when_deleteJobCalled() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        jobService.deleteJob(1L);
+
+        verify(jobLogRepository).deleteAllByJobId(1L);
+        verify(jobRepository).delete(job);
+    }
+
+    @Test
+    void should_throwNotFoundException_when_jobNotFoundOnDelete() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.deleteJob(99L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    // --- deleteAllCompleted ---
+
+    @Test
+    void should_deleteAllCompletedJobsAndTheirLogs() {
+        Job job1 = new Job();
+        job1.setId(1L);
+        Job job2 = new Job();
+        job2.setId(2L);
+        when(jobRepository.findAllByStatus(JobStatus.COMPLETED)).thenReturn(List.of(job1, job2));
+
+        int result = jobService.deleteAllCompleted();
+
+        assertThat(result).isEqualTo(2);
+        verify(jobLogRepository).deleteAllByJobId(1L);
+        verify(jobLogRepository).deleteAllByJobId(2L);
+        verify(jobRepository).deleteAll(List.of(job1, job2));
+    }
+
+    @Test
+    void should_returnZero_when_noCompletedJobsExist() {
+        when(jobRepository.findAllByStatus(JobStatus.COMPLETED)).thenReturn(List.of());
+
+        int result = jobService.deleteAllCompleted();
+
+        assertThat(result).isEqualTo(0);
+        verify(jobRepository).deleteAll(List.of());
+    }
+
     // --- createJob ---
 
     @Test
