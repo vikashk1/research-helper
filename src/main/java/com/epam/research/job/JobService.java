@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +21,7 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final JobLogRepository jobLogRepository;
+    private final JobStageRepository jobStageRepository;
     private final ClarificationAgent clarificationAgent;
     private final SseService sseService;
 
@@ -88,11 +90,45 @@ public class JobService {
     public Job restartJob(Long jobId) {
         Job job = getJob(jobId);
         jobLogRepository.deleteAllByJobId(jobId);
+        jobStageRepository.deleteAllByJobId(jobId);
         job.setStatus(JobStatus.PENDING);
         job.setReport(null);
         job.setErrorMessage(null);
         Job saved = jobRepository.save(job);
         log.info("Job {} restarted", jobId);
         return saved;
+    }
+
+    public JobStage startStage(Long jobId, PipelineStage stage) {
+        Job job = getJob(jobId);
+        JobStage jobStage = new JobStage();
+        jobStage.setJob(job);
+        jobStage.setStage(stage);
+        jobStage.setStatus(JobStage.StageStatus.RUNNING);
+        jobStage.setStartedAt(LocalDateTime.now());
+        JobStage saved = jobStageRepository.save(jobStage);
+        log.debug("Job {} stage {} RUNNING", jobId, stage);
+        return saved;
+    }
+
+    public void completeStage(Long jobId, JobStage jobStage, long elapsedMs) {
+        jobStage.setStatus(JobStage.StageStatus.COMPLETED);
+        jobStage.setCompletedAt(LocalDateTime.now());
+        jobStage.setElapsedMs(elapsedMs);
+        jobStageRepository.save(jobStage);
+        log.debug("Job {} stage {} COMPLETED in {}ms", jobId, jobStage.getStage(), elapsedMs);
+    }
+
+    public void failStage(Long jobId, JobStage jobStage, long elapsedMs) {
+        jobStage.setStatus(JobStage.StageStatus.FAILED);
+        jobStage.setCompletedAt(LocalDateTime.now());
+        jobStage.setElapsedMs(elapsedMs);
+        jobStageRepository.save(jobStage);
+        log.debug("Job {} stage {} FAILED after {}ms", jobId, jobStage.getStage(), elapsedMs);
+    }
+
+    public List<JobStage> getStages(Long jobId) {
+        getJob(jobId); // validate existence
+        return jobStageRepository.findByJobIdOrderByStartedAtAsc(jobId);
     }
 }

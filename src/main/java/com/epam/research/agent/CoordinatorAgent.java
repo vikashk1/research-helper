@@ -1,7 +1,10 @@
 package com.epam.research.agent;
 
 import com.epam.research.job.JobService;
+import com.epam.research.job.JobStage;
+import com.epam.research.job.PipelineStage;
 import com.epam.research.sse.SseService;
+import com.epam.research.sse.StageEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,13 +55,16 @@ public class CoordinatorAgent {
 
             log.debug("Clarification context built ({} Q&A pairs)", clarificationAnswers.size());
 
-            String rawResults = withRetry(() -> webSearchAgent.search(topic, context));
+            String rawResults = runStage(jobId, PipelineStage.SEARCH,
+                    () -> webSearchAgent.search(topic, context));
             jobService.appendLog(jobId, "Search complete");
 
-            String summary = withRetry(() -> summarizerAgent.summarize(topic, context, rawResults));
+            String summary = runStage(jobId, PipelineStage.SUMMARIZE,
+                    () -> summarizerAgent.summarize(topic, context, rawResults));
             jobService.appendLog(jobId, "Summary complete");
 
-            String report = withRetry(() -> reportFormatterAgent.format(topic, context, summary));
+            String report = runStage(jobId, PipelineStage.FORMAT,
+                    () -> reportFormatterAgent.format(topic, context, summary));
 
             jobService.markCompleted(jobId, report);
             sseService.complete(jobId);
@@ -69,6 +75,24 @@ public class CoordinatorAgent {
             sseService.complete(jobId);
         } finally {
             MDC.remove("jobId");
+        }
+    }
+
+    private <T> T runStage(Long jobId, PipelineStage stage, Callable<T> action) throws Exception {
+        long stageStart = System.currentTimeMillis();
+        JobStage jobStage = jobService.startStage(jobId, stage);
+        sseService.emitStage(jobId, new StageEvent(stage, StageEvent.StageStatus.STARTED, 0));
+        try {
+            T result = withRetry(action);
+            long elapsed = System.currentTimeMillis() - stageStart;
+            jobService.completeStage(jobId, jobStage, elapsed);
+            sseService.emitStage(jobId, new StageEvent(stage, StageEvent.StageStatus.COMPLETED, elapsed));
+            return result;
+        } catch (Exception e) {
+            long elapsed = System.currentTimeMillis() - stageStart;
+            jobService.failStage(jobId, jobStage, elapsed);
+            sseService.emitStage(jobId, new StageEvent(stage, StageEvent.StageStatus.FAILED, elapsed));
+            throw e;
         }
     }
 

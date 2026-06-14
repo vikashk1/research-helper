@@ -1,7 +1,10 @@
 package com.epam.research.agent;
 
 import com.epam.research.job.JobService;
+import com.epam.research.job.JobStage;
+import com.epam.research.job.PipelineStage;
 import com.epam.research.sse.SseService;
+import com.epam.research.sse.StageEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,9 +13,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +53,8 @@ class CoordinatorAgentTest {
         when(webSearchAgent.search(anyString(), anyString())).thenReturn("raw results");
         when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
         when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+        JobStage stub = new JobStage();
+        when(jobService.startStage(anyLong(), any(PipelineStage.class))).thenReturn(stub);
     }
 
     @Test
@@ -73,6 +82,8 @@ class CoordinatorAgentTest {
     void should_retryThreeTimes_and_markFailed_when_searchAlwaysFails() {
         when(webSearchAgent.search(anyString(), anyString()))
                 .thenThrow(new RuntimeException("search failed"));
+        JobStage stub = new JobStage();
+        when(jobService.startStage(anyLong(), any(PipelineStage.class))).thenReturn(stub);
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
@@ -88,6 +99,8 @@ class CoordinatorAgentTest {
                 .thenReturn("raw results");
         when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
         when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+        JobStage stub = new JobStage();
+        when(jobService.startStage(anyLong(), any(PipelineStage.class))).thenReturn(stub);
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
@@ -111,5 +124,37 @@ class CoordinatorAgentTest {
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
         verify(webSearchAgent).search(anyString(), contains("global"));
+    }
+
+    @Test
+    void should_emitStartedAndCompletedStageEvents_when_pipelineSucceeds() {
+        stubHappyPath();
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        // 3 stages x 2 events (STARTED + COMPLETED) = 6 emitStage calls
+        verify(sseService, times(6)).emitStage(eq(JOB_ID), any(StageEvent.class));
+    }
+
+    @Test
+    void should_startStageForEachPipelineStep_when_pipelineSucceeds() {
+        stubHappyPath();
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        verify(jobService).startStage(JOB_ID, PipelineStage.SEARCH);
+        verify(jobService).startStage(JOB_ID, PipelineStage.SUMMARIZE);
+        verify(jobService).startStage(JOB_ID, PipelineStage.FORMAT);
+    }
+
+    @Test
+    void should_emitFailedStageEvent_when_searchAlwaysFails() {
+        when(webSearchAgent.search(anyString(), anyString()))
+                .thenThrow(new RuntimeException("search failed"));
+        JobStage stub = new JobStage();
+        when(jobService.startStage(anyLong(), any(PipelineStage.class))).thenReturn(stub);
+
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        verify(sseService, atLeast(1)).emitStage(eq(JOB_ID),
+                argThat(e -> e.status() == StageEvent.StageStatus.FAILED));
     }
 }

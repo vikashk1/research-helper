@@ -1,5 +1,7 @@
 package com.epam.research.sse;
 
+import com.epam.research.job.PipelineStage;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -8,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 
 class SseServiceTest {
 
-    private final SseService sseService = new SseService();
+    private final SseService sseService = new SseService(new ObjectMapper());
 
     @Test
     void should_returnNonNullEmitter_when_registering() {
@@ -47,5 +49,11 @@ class SseServiceTest {
         // Re-registering after complete should still work cleanly
         SseEmitter fresh = sseService.register(1L);
         assertThat(fresh).isNotNull();
+    }
+
+    @Test
+    void should_notThrow_when_emittingStageToUnknownJob() {
+        StageEvent event = new StageEvent(PipelineStage.SEARCH, StageEvent.StageStatus.STARTED, 0);
+        assertThatNoException().isThrownBy(() -> sseService.emitStage(99L, event));
     }
 }

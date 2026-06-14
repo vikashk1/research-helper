@@ -2,6 +2,7 @@ package com.epam.research.job;
 
 import com.epam.research.agent.CoordinatorAgent;
 import com.epam.research.sse.SseService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -63,9 +64,17 @@ public class JobController {
         return job;
     }
 
+    @Operation(summary = "Stream live log and stage events for a job via SSE")
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamLogs(@PathVariable Long id) {
         log.debug("GET /api/jobs/{}/stream - SSE client connected", id);
         return sseService.register(id);
+    }
+
+    @Operation(summary = "Get pipeline stage progress for a job")
+    @GetMapping("/{id}/stages")
+    public List<JobStage> getStages(@PathVariable Long id) {
+        log.debug("GET /api/jobs/{}/stages", id);
+        return jobService.getStages(id);
     }
 }

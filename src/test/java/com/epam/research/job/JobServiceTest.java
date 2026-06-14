@@ -30,6 +30,9 @@ class JobServiceTest {
     private JobLogRepository jobLogRepository;
 
     @Mock
+    private JobStageRepository jobStageRepository;
+
+    @Mock
     private ClarificationAgent clarificationAgent;
 
     @Mock
@@ -158,6 +161,19 @@ class JobServiceTest {
     }
 
     @Test
+    void should_deleteAllStages_when_restarted() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setStatus(JobStatus.FAILED);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.restartJob(1L);
+
+        verify(jobStageRepository).deleteAllByJobId(1L);
+    }
+
+    @Test
     void should_throwNotFoundException_when_jobNotFoundOnRestart() {
         when(jobRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -201,5 +217,73 @@ class JobServiceTest {
         Job result = jobService.createJob("AI trends", Map.of());
 
         assertThat(result.getId()).isEqualTo(42L);
+    }
+
+    // --- startStage ---
+
+    @Test
+    void should_persistStageWithRunningStatus_when_stageStarted() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        ArgumentCaptor<JobStage> captor = ArgumentCaptor.forClass(JobStage.class);
+        when(jobStageRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.startStage(1L, PipelineStage.SEARCH);
+
+        assertThat(captor.getValue().getStage()).isEqualTo(PipelineStage.SEARCH);
+        assertThat(captor.getValue().getStatus()).isEqualTo(JobStage.StageStatus.RUNNING);
+    }
+
+    // --- completeStage ---
+
+    @Test
+    void should_markStageCompleted_and_storeElapsedMs() {
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.SUMMARIZE);
+
+        jobService.completeStage(1L, stage, 250L);
+
+        assertThat(stage.getStatus()).isEqualTo(JobStage.StageStatus.COMPLETED);
+        assertThat(stage.getElapsedMs()).isEqualTo(250L);
+        verify(jobStageRepository).save(stage);
+    }
+
+    // --- failStage ---
+
+    @Test
+    void should_markStageFailed_and_storeElapsedMs() {
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.FORMAT);
+
+        jobService.failStage(1L, stage, 500L);
+
+        assertThat(stage.getStatus()).isEqualTo(JobStage.StageStatus.FAILED);
+        assertThat(stage.getElapsedMs()).isEqualTo(500L);
+        verify(jobStageRepository).save(stage);
+    }
+
+    // --- getStages ---
+
+    @Test
+    void should_returnStagesOrderedByStartTime_when_jobExists() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        JobStage s1 = new JobStage();
+        JobStage s2 = new JobStage();
+        when(jobStageRepository.findByJobIdOrderByStartedAtAsc(1L)).thenReturn(List.of(s1, s2));
+
+        List<JobStage> result = jobService.getStages(1L);
+
+        assertThat(result).containsExactly(s1, s2);
+    }
+
+    @Test
+    void should_throwNotFoundException_when_jobNotFoundOnGetStages() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.getStages(99L))
+                .isInstanceOf(ResponseStatusException.class);
     }
 }

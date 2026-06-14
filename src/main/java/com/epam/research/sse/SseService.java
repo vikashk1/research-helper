@@ -1,5 +1,8 @@
 package com.epam.research.sse;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -11,9 +14,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class SseService {
 
     private final ConcurrentHashMap<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final ObjectMapper objectMapper;
 
     public SseEmitter register(Long jobId) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
@@ -24,17 +29,15 @@ public class SseService {
     }
 
     public void emit(Long jobId, String message) {
-        List<SseEmitter> jobEmitters = emitters.get(jobId);
-        if (jobEmitters == null) {
-            log.debug("No SSE clients for job {}, skipping emit", jobId);
-            return;
-        }
-        for (SseEmitter emitter : jobEmitters) {
-            try {
-                emitter.send(SseEmitter.event().data(message));
-            } catch (IOException e) {
-                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
-            }
+        sendEvent(jobId, "log", message);
+    }
+
+    public void emitStage(Long jobId, StageEvent event) {
+        try {
+            String json = objectMapper.writeValueAsString(event);
+            sendEvent(jobId, "stage", json);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialise StageEvent for job {}: {}", jobId, e.getMessage());
         }
     }
 
@@ -47,6 +50,21 @@ public class SseService {
         log.info("Completing {} SSE client(s) for job {}", jobEmitters.size(), jobId);
         for (SseEmitter emitter : jobEmitters) {
             emitter.complete();
+        }
+    }
+
+    private void sendEvent(Long jobId, String eventName, String data) {
+        List<SseEmitter> jobEmitters = emitters.get(jobId);
+        if (jobEmitters == null) {
+            log.debug("No SSE clients for job {}, skipping emit", jobId);
+            return;
+        }
+        for (SseEmitter emitter : jobEmitters) {
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(data));
+            } catch (IOException e) {
+                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
+            }
         }
     }
 }
