@@ -8,11 +8,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,17 +37,23 @@ class CoordinatorAgentTest {
             "What time period?", "2020-2025"
     );
 
+    private static final WebSearchOutput SEARCH_OUTPUT =
+            new WebSearchOutput("raw results", List.of());
+    private static final SummaryOutput SUMMARY_OUTPUT =
+            new SummaryOutput("summary", List.of());
+
     @BeforeEach
     void setUp() {
-        // retryDelayMs=0 so retry tests run instantly
         coordinatorAgent = new CoordinatorAgent(
                 jobService, webSearchAgent, summarizerAgent, reportFormatterAgent, sseService, 0L);
     }
 
     private void stubHappyPath() {
-        when(webSearchAgent.search(anyString(), anyString())).thenReturn("raw results");
-        when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+        when(webSearchAgent.search(anyString(), anyString())).thenReturn(SEARCH_OUTPUT);
+        when(summarizerAgent.summarize(anyString(), anyString(), any(WebSearchOutput.class)))
+                .thenReturn(SUMMARY_OUTPUT);
+        when(reportFormatterAgent.format(anyString(), anyString(), any(SummaryOutput.class)))
+                .thenReturn("# Report");
     }
 
     @Test
@@ -85,9 +93,11 @@ class CoordinatorAgentTest {
     void should_succeedAfterRetry_when_searchFailsOnFirstAttempt() {
         when(webSearchAgent.search(anyString(), anyString()))
                 .thenThrow(new RuntimeException("temporary"))
-                .thenReturn("raw results");
-        when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+                .thenReturn(SEARCH_OUTPUT);
+        when(summarizerAgent.summarize(anyString(), anyString(), any(WebSearchOutput.class)))
+                .thenReturn(SUMMARY_OUTPUT);
+        when(reportFormatterAgent.format(anyString(), anyString(), any(SummaryOutput.class)))
+                .thenReturn("# Report");
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
@@ -101,8 +111,8 @@ class CoordinatorAgentTest {
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
         verify(webSearchAgent).search(eq(TOPIC), anyString());
-        verify(summarizerAgent).summarize(eq(TOPIC), anyString(), eq("raw results"));
-        verify(reportFormatterAgent).format(eq(TOPIC), anyString(), eq("summary"));
+        verify(summarizerAgent).summarize(eq(TOPIC), anyString(), eq(SEARCH_OUTPUT));
+        verify(reportFormatterAgent).format(eq(TOPIC), anyString(), eq(SUMMARY_OUTPUT));
     }
 
     @Test
@@ -111,5 +121,20 @@ class CoordinatorAgentTest {
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
         verify(webSearchAgent).search(anyString(), contains("global"));
+    }
+
+    @Test
+    void should_logSourceCount_when_searchCompletesWithSources() {
+        WebSearchOutput searchWithSources = new WebSearchOutput("results",
+                List.of(new SearchResult(1, "Title", "https://example.com", "snippet")));
+        when(webSearchAgent.search(anyString(), anyString())).thenReturn(searchWithSources);
+        when(summarizerAgent.summarize(anyString(), anyString(), any(WebSearchOutput.class)))
+                .thenReturn(SUMMARY_OUTPUT);
+        when(reportFormatterAgent.format(anyString(), anyString(), any(SummaryOutput.class)))
+                .thenReturn("# Report");
+
+        coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
+
+        verify(jobService).markCompleted(JOB_ID, "# Report");
     }
 }

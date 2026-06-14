@@ -1,11 +1,13 @@
 package com.epam.research.agent;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.models.messages.CitationsWebSearchResultLocation;
 import com.anthropic.models.messages.ContentBlock;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlock;
+import com.anthropic.models.messages.TextCitation;
 import com.anthropic.models.messages.ToolUnion;
 import com.anthropic.services.blocking.MessageService;
 import org.junit.jupiter.api.Test;
@@ -42,15 +44,17 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
+        when(textBlock.citations()).thenReturn(Optional.empty());
     }
 
     @Test
     void should_returnSearchResults_when_validTopicAndContextProvided() {
         stubApiCall("Found relevant results about climate change research.");
 
-        String result = webSearchAgent.search("climate change", "focus on 2020-2025, academic sources");
+        WebSearchOutput result = webSearchAgent.search("climate change", "focus on 2020-2025, academic sources");
 
-        assertThat(result).isEqualTo("Found relevant results about climate change research.");
+        assertThat(result.content()).isEqualTo("Found relevant results about climate change research.");
+        assertThat(result.sources()).isEmpty();
     }
 
     @Test
@@ -100,9 +104,10 @@ class WebSearchAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = webSearchAgent.search("topic", "context");
+        WebSearchOutput result = webSearchAgent.search("topic", "context");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
+        assertThat(result.sources()).isEmpty();
     }
 
     @Test
@@ -112,9 +117,10 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = webSearchAgent.search("topic", "context");
+        WebSearchOutput result = webSearchAgent.search("topic", "context");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
+        assertThat(result.sources()).isEmpty();
     }
 
     @Test
@@ -127,11 +133,64 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock, secondBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn("First part.");
+        when(textBlock.citations()).thenReturn(Optional.empty());
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Second part.");
+        when(secondTextBlock.citations()).thenReturn(Optional.empty());
 
-        String result = webSearchAgent.search("topic", "context");
+        WebSearchOutput result = webSearchAgent.search("topic", "context");
 
-        assertThat(result).contains("First part.").contains("Second part.");
+        assertThat(result.content()).contains("First part.").contains("Second part.");
+    }
+
+    @Test
+    void should_extractWebSearchCitations_when_textBlockHasCitations() {
+        CitationsWebSearchResultLocation loc = mock(CitationsWebSearchResultLocation.class);
+        when(loc.url()).thenReturn("https://example.com/article");
+        when(loc.title()).thenReturn(Optional.of("Example Article"));
+        when(loc.citedText()).thenReturn("Some cited text.");
+
+        TextCitation citation = mock(TextCitation.class);
+        when(citation.isWebSearchResultLocation()).thenReturn(true);
+        when(citation.asWebSearchResultLocation()).thenReturn(loc);
+
+        when(anthropicClient.messages()).thenReturn(messageService);
+        when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
+        when(message.content()).thenReturn(List.of(contentBlock));
+        when(contentBlock.text()).thenReturn(Optional.of(textBlock));
+        when(textBlock.text()).thenReturn("Research findings.");
+        when(textBlock.citations()).thenReturn(Optional.of(List.of(citation)));
+
+        WebSearchOutput result = webSearchAgent.search("topic", "context");
+
+        assertThat(result.sources()).hasSize(1);
+        SearchResult source = result.sources().get(0);
+        assertThat(source.index()).isEqualTo(1);
+        assertThat(source.title()).isEqualTo("Example Article");
+        assertThat(source.url()).isEqualTo("https://example.com/article");
+        assertThat(source.snippet()).isEqualTo("Some cited text.");
+    }
+
+    @Test
+    void should_deduplicateCitationsByUrl_when_sameUrlAppearsMultipleTimes() {
+        CitationsWebSearchResultLocation loc = mock(CitationsWebSearchResultLocation.class);
+        when(loc.url()).thenReturn("https://example.com");
+        when(loc.title()).thenReturn(Optional.of("Example"));
+        when(loc.citedText()).thenReturn("text");
+
+        TextCitation citation = mock(TextCitation.class);
+        when(citation.isWebSearchResultLocation()).thenReturn(true);
+        when(citation.asWebSearchResultLocation()).thenReturn(loc);
+
+        when(anthropicClient.messages()).thenReturn(messageService);
+        when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
+        when(message.content()).thenReturn(List.of(contentBlock));
+        when(contentBlock.text()).thenReturn(Optional.of(textBlock));
+        when(textBlock.text()).thenReturn("text");
+        when(textBlock.citations()).thenReturn(Optional.of(List.of(citation, citation)));
+
+        WebSearchOutput result = webSearchAgent.search("topic", "context");
+
+        assertThat(result.sources()).hasSize(1);
     }
 }

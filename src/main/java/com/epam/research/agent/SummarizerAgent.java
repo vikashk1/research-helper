@@ -16,18 +16,29 @@ public class SummarizerAgent {
 
     private static final String SYSTEM_PROMPT = """
             You are a research summarizer. Given raw search results and context, produce a concise, \
-            well-structured summary of the key findings relevant to the topic.""";
+            well-structured summary of the key findings relevant to the topic. When referencing \
+            information from a source, include the source number in brackets, e.g. [1], [2]. \
+            Use only the source numbers provided in the input.""";
 
     private final AnthropicClient anthropicClient;
 
-    public String summarize(String topic, String clarificationContext, String rawSearchResults) {
-        log.info("Summarizing search results for topic: '{}', input length: {} chars", topic, rawSearchResults.length());
+    public SummaryOutput summarize(String topic, String clarificationContext, WebSearchOutput searchOutput) {
+        log.info("Summarizing search results for topic: '{}', input length: {} chars, sources: {}",
+                topic, searchOutput.content().length(), searchOutput.sources().size());
         long start = System.currentTimeMillis();
+
+        String sourcesSection = searchOutput.sources().isEmpty() ? "No sources available." :
+                searchOutput.sources().stream()
+                        .map(s -> "[%d] %s - %s".formatted(s.index(), s.title(), s.url()))
+                        .collect(Collectors.joining("\n"));
 
         String userMessage = """
                 Topic: %s
                 Context: %s
-                Raw Search Results: %s""".formatted(topic, clarificationContext, rawSearchResults);
+                Available Sources:
+                %s
+                Raw Search Results: %s""".formatted(
+                topic, clarificationContext, sourcesSection, searchOutput.content());
 
         MessageCreateParams params = MessageCreateParams.builder()
                 .model(Model.CLAUDE_SONNET_4_6)
@@ -43,7 +54,8 @@ public class SummarizerAgent {
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
 
-        log.info("Summarization completed in {}ms, summary length: {} chars", System.currentTimeMillis() - start, summary.length());
-        return summary;
+        log.info("Summarization completed in {}ms, summary length: {} chars",
+                System.currentTimeMillis() - start, summary.length());
+        return new SummaryOutput(summary, searchOutput.sources());
     }
 }

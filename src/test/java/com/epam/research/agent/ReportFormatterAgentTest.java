@@ -43,14 +43,47 @@ class ReportFormatterAgentTest {
         when(textBlock.text()).thenReturn(responseText);
     }
 
+    private SummaryOutput summaryOutputWithoutSources(String content) {
+        return new SummaryOutput(content, List.of());
+    }
+
+    private SummaryOutput summaryOutputWithSources(String content) {
+        return new SummaryOutput(content, List.of(
+                new SearchResult(1, "Example Article", "https://example.com/article", "snippet")));
+    }
+
     @Test
     void should_returnFormattedReport_when_validInputsProvided() {
         stubApiCall("# Climate Change Report\n\n## Key Findings\n...");
 
         String result = reportFormatterAgent.format(
-                "climate change", "focus on 2020-2025", "Summarized content...");
+                "climate change", "focus on 2020-2025",
+                summaryOutputWithoutSources("Summarized content..."));
 
-        assertThat(result).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
+        assertThat(result).contains("# Climate Change Report");
+        assertThat(result).contains("## Key Findings");
+    }
+
+    @Test
+    void should_appendSourcesSection_when_sourcesArePresent() {
+        stubApiCall("# Report\n\nSome content [1].");
+
+        String result = reportFormatterAgent.format(
+                "topic", "context", summaryOutputWithSources("Summarized content."));
+
+        assertThat(result).contains("## Sources");
+        assertThat(result).contains("[1]");
+        assertThat(result).contains("[Example Article](https://example.com/article)");
+    }
+
+    @Test
+    void should_notAppendSourcesSection_when_sourcesAreEmpty() {
+        stubApiCall("# Report\n\nNo citations.");
+
+        String result = reportFormatterAgent.format(
+                "topic", "context", summaryOutputWithoutSources("content"));
+
+        assertThat(result).doesNotContain("## Sources");
     }
 
     @Test
@@ -58,7 +91,8 @@ class ReportFormatterAgentTest {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        reportFormatterAgent.format("quantum computing", "target engineers", "summarized content here");
+        reportFormatterAgent.format("quantum computing", "target engineers",
+                summaryOutputWithoutSources("summarized content here"));
 
         verify(messageService).create(captor.capture());
         String userMessage = captor.getValue().messages().get(0).content().asString();
@@ -69,11 +103,25 @@ class ReportFormatterAgentTest {
     }
 
     @Test
+    void should_includeSources_when_buildingApiRequestWithSources() {
+        stubApiCall("# Report");
+        ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+
+        reportFormatterAgent.format("topic", "context", summaryOutputWithSources("summary"));
+
+        verify(messageService).create(captor.capture());
+        String userMessage = captor.getValue().messages().get(0).content().asString();
+        assertThat(userMessage)
+                .contains("https://example.com/article")
+                .contains("[1]");
+    }
+
+    @Test
     void should_notIncludeAnyTool_when_buildingApiRequest() {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        reportFormatterAgent.format("topic", "context", "summary");
+        reportFormatterAgent.format("topic", "context", summaryOutputWithoutSources("summary"));
 
         verify(messageService).create(captor.capture());
         assertThat(captor.getValue().tools())
@@ -85,7 +133,7 @@ class ReportFormatterAgentTest {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        reportFormatterAgent.format("topic", "context", "summary");
+        reportFormatterAgent.format("topic", "context", summaryOutputWithoutSources("summary"));
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
@@ -99,7 +147,8 @@ class ReportFormatterAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format("topic", "context",
+                summaryOutputWithoutSources("summary"));
 
         assertThat(result).isEmpty();
     }
@@ -111,7 +160,8 @@ class ReportFormatterAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format("topic", "context",
+                summaryOutputWithoutSources("summary"));
 
         assertThat(result).isEmpty();
     }
@@ -129,7 +179,8 @@ class ReportFormatterAgentTest {
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("## Section Two");
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format("topic", "context",
+                summaryOutputWithoutSources("summary"));
 
         assertThat(result).contains("# Section One").contains("## Section Two");
     }

@@ -43,14 +43,35 @@ class SummarizerAgentTest {
         when(textBlock.text()).thenReturn(responseText);
     }
 
+    private WebSearchOutput searchOutputWithoutSources(String content) {
+        return new WebSearchOutput(content, List.of());
+    }
+
+    private WebSearchOutput searchOutputWithSources(String content) {
+        return new WebSearchOutput(content, List.of(
+                new SearchResult(1, "Example Source", "https://example.com", "snippet")));
+    }
+
     @Test
     void should_returnSummary_when_validInputsProvided() {
         stubApiCall("Key findings: climate change is accelerating.");
 
-        String result = summarizerAgent.summarize(
-                "climate change", "focus on 2020-2025", "Raw search result data...");
+        SummaryOutput result = summarizerAgent.summarize(
+                "climate change", "focus on 2020-2025",
+                searchOutputWithoutSources("Raw search result data..."));
 
-        assertThat(result).isEqualTo("Key findings: climate change is accelerating.");
+        assertThat(result.content()).isEqualTo("Key findings: climate change is accelerating.");
+    }
+
+    @Test
+    void should_preserveSources_when_summarizing() {
+        stubApiCall("Summary text.");
+
+        SummaryOutput result = summarizerAgent.summarize(
+                "topic", "context", searchOutputWithSources("raw content"));
+
+        assertThat(result.sources()).hasSize(1);
+        assertThat(result.sources().get(0).url()).isEqualTo("https://example.com");
     }
 
     @Test
@@ -58,7 +79,8 @@ class SummarizerAgentTest {
         stubApiCall("summary");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        summarizerAgent.summarize("quantum computing", "target engineers", "raw results here");
+        summarizerAgent.summarize("quantum computing", "target engineers",
+                searchOutputWithoutSources("raw results here"));
 
         verify(messageService).create(captor.capture());
         String userMessage = captor.getValue().messages().get(0).content().asString();
@@ -69,11 +91,25 @@ class SummarizerAgentTest {
     }
 
     @Test
+    void should_includeSources_when_buildingApiRequestWithSources() {
+        stubApiCall("summary");
+        ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+
+        summarizerAgent.summarize("topic", "context", searchOutputWithSources("raw content"));
+
+        verify(messageService).create(captor.capture());
+        String userMessage = captor.getValue().messages().get(0).content().asString();
+        assertThat(userMessage)
+                .contains("https://example.com")
+                .contains("[1]");
+    }
+
+    @Test
     void should_notIncludeAnyTool_when_buildingApiRequest() {
         stubApiCall("summary");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        summarizerAgent.summarize("topic", "context", "raw results");
+        summarizerAgent.summarize("topic", "context", searchOutputWithoutSources("raw results"));
 
         verify(messageService).create(captor.capture());
         assertThat(captor.getValue().tools())
@@ -85,7 +121,7 @@ class SummarizerAgentTest {
         stubApiCall("summary");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        summarizerAgent.summarize("topic", "context", "raw results");
+        summarizerAgent.summarize("topic", "context", searchOutputWithoutSources("raw results"));
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
@@ -99,9 +135,10 @@ class SummarizerAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = summarizerAgent.summarize("topic", "context", "results");
+        SummaryOutput result = summarizerAgent.summarize("topic", "context",
+                searchOutputWithoutSources("results"));
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -111,9 +148,10 @@ class SummarizerAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = summarizerAgent.summarize("topic", "context", "results");
+        SummaryOutput result = summarizerAgent.summarize("topic", "context",
+                searchOutputWithoutSources("results"));
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -129,8 +167,9 @@ class SummarizerAgentTest {
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Part two.");
 
-        String result = summarizerAgent.summarize("topic", "context", "results");
+        SummaryOutput result = summarizerAgent.summarize("topic", "context",
+                searchOutputWithoutSources("results"));
 
-        assertThat(result).contains("Part one.").contains("Part two.");
+        assertThat(result.content()).contains("Part one.").contains("Part two.");
     }
 }
