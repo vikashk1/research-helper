@@ -4,12 +4,18 @@
       "mcp__playwright",
       "Bash(gh issue view *)",
       "Bash(gh issue list *)",
+      "Bash(gh issue create *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh issue edit *)",
       "Bash(gh pr view *)",
       "Bash(gh pr list *)",
       "Bash(gh pr diff *)",
       "Bash(gh pr checks *)",
+      "Bash(gh pr review *)",
       "Bash(gh repo view *)",
-      "Bash(gh api * --method GET *)"
+      "Bash(gh api * --method GET *)",
+      "Bash(mvn test *)",
+      "Bash(mvn test)"
     ],
     "deny": [
       "Read(**/.env)",

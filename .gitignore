@@ -46,3 +46,4 @@ spring-shell.log
 # ---- Logs ----
 *.log
 logs/
+.playwright-mcp/

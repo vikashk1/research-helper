@@ -58,10 +58,12 @@ ${issue.body}
 Steps:
 1. Read relevant files to understand the problem.
 2. Implement the fix.
-3. Run mvn test -q (skip for frontend-only changes).
+3. Run mvn test -q (skip for frontend-only changes). If tests fail, attempt to fix. If still failing, set fixed=false and explain why in the summary.
 4. Commit with message: fix(#${issue.number}): <short description>
 5. Push the branch: git push -u origin HEAD
-6. Open a PR: gh pr create --title "fix(#${issue.number}): <short description>" --body "Closes #${issue.number}" --base main
+6. Open a PR as draft: gh pr create --title "fix(#${issue.number}): <short description>" --body "Closes #${issue.number}" --base main --draft
+
+IMPORTANT: Only push and open a PR if ALL tests pass. If tests fail after your fix, do NOT push or open a PR — return fixed=false instead.
 
 Return whether you fixed it, a one-line summary, files changed, and the PR URL if created.`,
       {
