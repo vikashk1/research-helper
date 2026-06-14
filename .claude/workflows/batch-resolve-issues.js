@@ -30,6 +30,10 @@ const FIX_SCHEMA = {
 }
 
 // args: array of issue numbers, e.g. [8, 9, 10]
+if (!Array.isArray(args) || !args.length) {
+  log('Pass issue numbers as an array, e.g. [8, 9, 10]')
+  return { error: 'no issues provided' }
+}
 const issueNumbers = args
 
 phase('Fetch')

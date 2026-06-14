@@ -21,7 +21,13 @@ Formatting, import order, Javadoc, naming bikesheds.
 2. Post inline comments for issues found (via `gh api` PR comments endpoint).
 3. Final verdict: approve or request changes.
 
+## Comment Style
+- Max 1-2 sentences per inline comment.
+- State the problem and fix. No preamble, no praise, no filler.
+- Bad: "I noticed that this method doesn't handle the null case which could potentially lead to..."
+- Good: "NPE if `user` is null — add a null check or use Optional."
+
 ## Verdict Rules
 - **Approve** if no correctness/security issues. Minor style nits don't block.
 - **Request changes** if there's a bug, security hole, or architectural violation.
-- Always explain *why* something is wrong, not just *what*.
+- Summary comment: 1-3 bullet points max. No essay.

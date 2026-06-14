@@ -234,13 +234,13 @@ const approved = passed.filter((_, i) => reviews[i] && reviews[i].approved)
 
 // --- Phase 6: Ship ---
 phase('Ship')
-const shipped = approved.map(prNum => `https://github.com/${prNum}`)
-log(`${approved.length} PR(s) approved and ready for merge: ${approved.join(', ')}`)
+const readyToMerge = approved.map(n => implemented.find(f => f.pr_url.includes(`/pull/${n}`))?.pr_url).filter(Boolean)
+log(`${approved.length} PR(s) approved and ready for merge: ${readyToMerge.join(', ')}`)
 
 return {
   issues: validIssues.length,
   implemented: implemented.length,
   qa_passed: passed.length,
   approved: approved.length,
-  ready_to_merge: approved.map(n => implemented.find(f => f.pr_url.includes(n))?.pr_url).filter(Boolean),
+  ready_to_merge: readyToMerge,
 }
