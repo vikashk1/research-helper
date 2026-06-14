@@ -16,7 +16,14 @@ import java.util.stream.Collectors;
 public class WebSearchAgent {
 
     private static final String SYSTEM_PROMPT = """
-            You are a web research assistant. Search the web and return comprehensive, factual results about the given topic. Include relevant sources and summarize key findings.""";
+            You are a web research assistant. Search the web and return comprehensive, factual results about the given topic.
+
+            IMPORTANT — source attribution rules:
+            1. After the main content, append a "## Sources" section.
+            2. List every URL you retrieved information from as a numbered entry, one per line, in the format:
+               [N] <URL>
+            3. In the main content, add inline citation markers like [1], [2] immediately after the relevant sentence or fact.
+            4. Only list URLs that directly support facts stated in the content. Do not fabricate URLs.""";
 
     private final AnthropicClient anthropicClient;
 

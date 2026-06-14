@@ -133,4 +133,42 @@ class SummarizerAgentTest {
 
         assertThat(result).contains("Part one.").contains("Part two.");
     }
+
+    @Test
+    void should_preserveSourceAttributionInSystemPrompt_when_buildingApiRequest() {
+        stubApiCall("summary with citations");
+        ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+
+        summarizerAgent.summarize("topic", "context", "raw results");
+
+        verify(messageService).create(captor.capture());
+        String systemPrompt = captor.getValue().system()
+                .flatMap(s -> s.string())
+                .orElse("");
+        assertThat(systemPrompt)
+                .contains("## Sources")
+                .contains("inline citation");
+    }
+
+    @Test
+    void should_propagateSourcesSection_when_rawResultsContainCitations() {
+        String rawWithSources = """
+                Climate is changing [1].
+
+                ## Sources
+                [1] https://example.com
+                """;
+        String summaryWithSources = """
+                Key finding: climate is changing [1].
+
+                ## Sources
+                [1] https://example.com
+                """;
+        stubApiCall(summaryWithSources);
+
+        String result = summarizerAgent.summarize("climate", "context", rawWithSources);
+
+        assertThat(result).contains("## Sources");
+        assertThat(result).contains("[1] https://example.com");
+    }
 }

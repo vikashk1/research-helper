@@ -133,4 +133,39 @@ class ReportFormatterAgentTest {
 
         assertThat(result).contains("# Section One").contains("## Section Two");
     }
+
+    @Test
+    void should_requestSourcesSectionInSystemPrompt_when_buildingApiRequest() {
+        stubApiCall("# Report");
+        ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+
+        reportFormatterAgent.format("topic", "context", "summary");
+
+        verify(messageService).create(captor.capture());
+        String systemPrompt = captor.getValue().system()
+                .flatMap(s -> s.string())
+                .orElse("");
+        assertThat(systemPrompt)
+                .contains("## Sources")
+                .contains("hyperlink");
+    }
+
+    @Test
+    void should_renderClickableMarkdownLinks_when_reportContainsCitations() {
+        String reportWithClickableLinks = """
+                # Climate Change Report
+
+                Arctic ice is melting faster than before [1].
+
+                ## Sources
+                [1] [https://ipcc.ch/report](https://ipcc.ch/report)
+                """;
+        stubApiCall(reportWithClickableLinks);
+
+        String result = reportFormatterAgent.format("climate change", "context", "summary with [1]\n\n## Sources\n[1] https://ipcc.ch/report");
+
+        assertThat(result).contains("## Sources");
+        assertThat(result).contains("[1]");
+        assertThat(result).contains("https://ipcc.ch/report");
+    }
 }

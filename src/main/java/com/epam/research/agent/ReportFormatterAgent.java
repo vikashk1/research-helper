@@ -17,7 +17,15 @@ public class ReportFormatterAgent {
     private static final String SYSTEM_PROMPT = """
             You are a research report writer. Given summarized content and context, produce a \
             well-structured Markdown report. Adapt the structure dynamically based on the topic, \
-            audience, and content — do not use a fixed template.""";
+            audience, and content — do not use a fixed template.
+
+            IMPORTANT — citation and sources rules:
+            1. Retain all inline citation markers (e.g. [1], [2]) exactly as they appear in the summarized content.
+            2. At the very end of the report, include a "## Sources" section.
+            3. In the "## Sources" section, list every source as a numbered Markdown hyperlink:
+               [N] [<URL>](<URL>)
+               Use the numbered URLs from the summarized content's "## Sources" section. Do not renumber.
+            4. Do not fabricate URLs. Only include URLs that appeared in the summarized content.""";
 
     private final AnthropicClient anthropicClient;
 

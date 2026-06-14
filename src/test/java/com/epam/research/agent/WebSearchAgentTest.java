@@ -134,4 +134,36 @@ class WebSearchAgentTest {
 
         assertThat(result).contains("First part.").contains("Second part.");
     }
+
+    @Test
+    void should_requestSourceUrlsInSystemPrompt_when_buildingApiRequest() {
+        stubApiCall("results with [1]\n\n## Sources\n[1] https://example.com");
+        ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+
+        webSearchAgent.search("topic", "context");
+
+        verify(messageService).create(captor.capture());
+        String systemPrompt = captor.getValue().system()
+                .flatMap(s -> s.string())
+                .orElse("");
+        assertThat(systemPrompt)
+                .contains("## Sources")
+                .contains("[N]");
+    }
+
+    @Test
+    void should_returnResultsWithSourcesSection_when_responseIncludesCitations() {
+        String responseWithSources = """
+                Climate change is accelerating [1].
+
+                ## Sources
+                [1] https://ipcc.ch/report
+                """;
+        stubApiCall(responseWithSources);
+
+        String result = webSearchAgent.search("climate change", "context");
+
+        assertThat(result).contains("## Sources");
+        assertThat(result).contains("[1] https://ipcc.ch/report");
+    }
 }
