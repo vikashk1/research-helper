@@ -145,13 +145,19 @@ const fixes = await pipeline(
 Acceptance criteria:
 ${issue.ac.map(a => '- ' + a).join('\n')}
 
+Branch naming: Use the pattern <type>/ISSUE-<number>-<slug>
+- type: feature (new functionality), bugfix (bug), chore (cleanup/config)
+- slug: 2-4 lowercase words from the title, hyphenated
+- Example: feature/ISSUE-${issue.number}-add-health-check
+
 Steps:
-1. Read relevant files.
-2. Implement the feature/fix.
-3. Run mvn test -q (skip for frontend-only). If tests fail, fix them. If still failing, return fixed=false.
-4. Commit: feat(#${issue.number}): <short description>
-5. Push: git push -u origin HEAD
-6. Open draft PR: gh pr create --title "feat(#${issue.number}): <desc>" --body "Closes #${issue.number}" --base main --draft
+1. Create and checkout branch: git checkout -b <branch-name>
+2. Read relevant files.
+3. Implement the feature/fix.
+4. Run mvn test -q (skip for frontend-only). If tests fail, fix them. If still failing, return fixed=false.
+5. Commit: feat(#${issue.number}): <short description>
+6. Push: git push -u origin HEAD
+7. Open draft PR: gh pr create --title "feat(#${issue.number}): <desc>" --body "Closes #${issue.number}" --base main --draft
 
 Only push/PR if tests pass. Return fixed, pr_url, and summary.`,
       { label: `dev-#${issue.number}`, agentType, isolation: 'worktree', schema: FIX_SCHEMA }
@@ -171,24 +177,29 @@ if (!implemented.length) {
 phase('Test')
 const prNumbers = implemented.map(f => f.pr_url.match(/\/pull\/(\d+)/)?.[1]).filter(Boolean)
 
-const qaResults = await parallel(prNumbers.map((prNum, i) => () =>
-  agent(
+const qaResults = []
+for (let i = 0; i < prNumbers.length; i++) {
+  const prNum = prNumbers[i]
+  const result = await agent(
     `QA issue #${doable[i].number}, PR #${prNum}.
 
 Acceptance criteria:
 ${doable[i].ac.map(a => '- ' + a).join('\n')}
 
 Steps:
-1. gh pr diff ${prNum} — read what changed.
+1. Checkout the PR branch: gh pr checkout ${prNum}
 2. Run mvn test -q — must pass.
-3. For UI changes: use Playwright to verify (browser_navigate to http://localhost:8080, browser_snapshot).
-4. Check each acceptance criterion.
-5. Verdict: gh pr review ${prNum} --approve or --request-changes with reason.
+3. gh pr diff ${prNum} — read what changed.
+4. For UI changes: use Playwright to verify (browser_navigate to http://localhost:8080, browser_snapshot).
+5. Check each acceptance criterion.
+6. Verdict: gh pr review ${prNum} --approve or --request-changes with reason.
+7. Checkout back to main: git checkout main
 
 Return passed (boolean) and details.`,
     { label: `qa-#${prNum}`, agentType: 'qa-engineer', schema: QA_SCHEMA }
   )
-))
+  qaResults.push(result)
+}
 
 const passed = prNumbers.filter((_, i) => qaResults[i] && qaResults[i].passed)
 log(`QA: ${passed.length}/${prNumbers.length} passed`)
