@@ -39,6 +39,39 @@ function statusBadge(status) {
   return `<span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${cls}">${status}</span>`;
 }
 
+// ----------------------------------------------------------------
+// Confirmation dialog
+// ----------------------------------------------------------------
+function showConfirmDialog(title, message) {
+  return new Promise((resolve) => {
+    const dialog  = document.getElementById('confirm-dialog');
+    const titleEl = document.getElementById('confirm-dialog-title');
+    const msgEl   = document.getElementById('confirm-dialog-message');
+    const okBtn   = document.getElementById('confirm-dialog-ok');
+    const cancelBtn = document.getElementById('confirm-dialog-cancel');
+
+    titleEl.textContent = title;
+    msgEl.textContent   = message;
+    dialog.classList.remove('hidden');
+
+    function cleanup(result) {
+      dialog.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      dialog.removeEventListener('click', onBackdrop);
+      resolve(result);
+    }
+
+    function onOk()      { cleanup(true);  }
+    function onCancel()  { cleanup(false); }
+    function onBackdrop(e) { if (e.target === dialog) cleanup(false); }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    dialog.addEventListener('click', onBackdrop);
+  });
+}
+
 function showError(elId, msg) {
   const el = document.getElementById(elId);
   el.textContent = msg;
@@ -112,10 +145,16 @@ function goToStep(n) {
 // ----------------------------------------------------------------
 async function loadSidebar() {
   const list = document.getElementById('job-list');
+  const clearBtn = document.getElementById('clear-completed-btn');
   try {
     const res = await fetch('/api/jobs');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const jobs = await res.json();
+
+    // Show/hide "Clear completed" button based on whether any completed jobs exist
+    const hasCompleted = jobs.some(j => j.status === 'COMPLETED');
+    clearBtn.classList.toggle('hidden', !hasCompleted);
+
     if (jobs.length === 0) {
       list.innerHTML = '<p class="text-slate-400 dark:text-slate-500 text-sm px-2 py-4 text-center">No jobs yet.</p>';
       return;
@@ -126,7 +165,7 @@ async function loadSidebar() {
         : (job.topic || 'Untitled');
       return `
         <div
-          class="px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group"
+          class="px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors group relative"
           data-job-id="${job.id}"
           data-job-status="${escapeAttr(job.status)}"
           data-job-topic="${escapeAttr(job.topic)}"
@@ -134,6 +173,18 @@ async function loadSidebar() {
         >
           <div class="flex items-start justify-between gap-2">
             <span class="text-sm text-slate-800 dark:text-slate-200 leading-snug flex-1 min-w-0 truncate">${escapeHtml(truncated)}</span>
+            <button
+              class="delete-job-btn shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 transition-opacity transition-colors p-0.5 rounded"
+              data-delete-id="${job.id}"
+              data-delete-topic="${escapeAttr(truncated)}"
+              title="Delete this job"
+              aria-label="Delete job"
+            >
+              <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
           </div>
           <div class="flex items-center gap-2 mt-1">
             ${statusBadge(job.status)}
@@ -141,13 +192,26 @@ async function loadSidebar() {
           </div>
         </div>`;
     }).join('');
+
+    // Load job on row click (but not on trash button)
     list.querySelectorAll('[data-job-id]').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.delete-job-btn')) return;
         loadJob(
           parseInt(el.dataset.jobId, 10),
           el.dataset.jobTopic,
           el.dataset.jobStatus
         );
+      });
+    });
+
+    // Trash icon click handlers
+    list.querySelectorAll('.delete-job-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const jobId    = parseInt(btn.dataset.deleteId, 10);
+        const jobTopic = btn.dataset.deleteTopic;
+        await deleteJob(jobId, jobTopic);
       });
     });
   } catch (e) {
@@ -458,9 +522,62 @@ function resetWizard() {
 }
 
 // ----------------------------------------------------------------
+// Delete job (single)
+// ----------------------------------------------------------------
+async function deleteJob(jobId, jobTopic) {
+  const confirmed = await showConfirmDialog(
+    'Delete Job',
+    `Are you sure you want to delete the job "${jobTopic}"?`
+  );
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    // If the deleted job is the one currently being viewed, reset to Step 1
+    if (currentJobId === jobId) {
+      resetWizard();
+    }
+    loadSidebar();
+  } catch (e) {
+    alert('Failed to delete job: ' + e.message);
+  }
+}
+
+// ----------------------------------------------------------------
+// Clear all completed jobs (bulk)
+// ----------------------------------------------------------------
+async function clearCompletedJobs() {
+  const confirmed = await showConfirmDialog(
+    'Clear Completed Jobs',
+    'Are you sure you want to delete all completed jobs? This cannot be undone.'
+  );
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/jobs/completed', { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // If the currently viewed job was completed and thus deleted, reset to Step 1
+    if (currentJobId !== null) {
+      const checkRes = await fetch(`/api/jobs/${currentJobId}`).catch(() => null);
+      if (!checkRes || checkRes.status === 404) {
+        resetWizard();
+      }
+    }
+    loadSidebar();
+  } catch (e) {
+    alert('Failed to clear completed jobs: ' + e.message);
+  }
+}
+
+// ----------------------------------------------------------------
 // Sidebar controls
 // ----------------------------------------------------------------
 document.getElementById('refresh-sidebar-btn').addEventListener('click', loadSidebar);
+document.getElementById('clear-completed-btn').addEventListener('click', clearCompletedJobs);
 
 // ----------------------------------------------------------------
 // Init

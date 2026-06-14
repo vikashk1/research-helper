@@ -15,9 +15,12 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -140,6 +143,36 @@ class JobControllerTest {
 
         mockMvc.perform(post("/api/jobs/99/restart"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_return204_when_deleteJobEndpointCalled() throws Exception {
+        doNothing().when(jobService).deleteJob(1L);
+
+        mockMvc.perform(delete("/api/jobs/1"))
+                .andExpect(status().isNoContent());
+
+        verify(jobService).deleteJob(1L);
+    }
+
+    @Test
+    void should_return404_when_deleteCalledForMissingJob() throws Exception {
+        doThrow(new ResponseStatusException(NOT_FOUND, "Job not found: 99"))
+                .when(jobService).deleteJob(99L);
+
+        mockMvc.perform(delete("/api/jobs/99"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_returnDeletedCount_when_deleteCompletedEndpointCalled() throws Exception {
+        when(jobService.deleteAllCompleted()).thenReturn(3);
+
+        mockMvc.perform(delete("/api/jobs/completed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deleted").value(3));
+
+        verify(jobService).deleteAllCompleted();
     }
 
     @Test
