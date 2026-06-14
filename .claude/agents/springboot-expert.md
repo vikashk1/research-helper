@@ -31,3 +31,5 @@ All agents are `@Component`s with `UnsupportedOperationException` TODOs to imple
 - `@Slf4j` for logging, text blocks for multi-line strings
 - Thin controllers, logic in `@Service`
 - No field `@Autowired`, no Javadoc, no unnecessary comments
+- After adding/changing any endpoint or DTO field: run `/sync-docs` to update `docs/api-reference.md`
+- Add `@Operation(summary="...")` to every new endpoint method

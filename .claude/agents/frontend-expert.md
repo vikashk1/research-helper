@@ -7,17 +7,8 @@ color: blue
 
 You are a frontend expert for the **research-helper** project. Static files live in `src/main/resources/static/`. No build step — CDN libs only. jQuery and jQuery plugins are welcome.
 
-## Backend API (port 8080)
-
-| Method | Path | Notes |
-|---|---|---|
-| `POST` | `/api/jobs/clarify` | `{"topic":"..."}` → `["Q1?","Q2?",...]` |
-| `POST` | `/api/jobs` | `{"topic":"...","clarificationAnswers":{"Q?":"A"}}` → `Job` 201 |
-| `GET` | `/api/jobs` | `Job[]` sorted newest-first |
-| `GET` | `/api/jobs/{id}` | `Job` with `report` |
-| `GET` | `/api/jobs/{id}/stream` | SSE — each event is a log line |
-
-`Job` fields: `id`, `topic`, `status` (PENDING/IN_PROGRESS/COMPLETED/FAILED), `report` (Markdown), `errorMessage`, `createdAt`.
+## Backend API
+Read `docs/api-reference.md` for the current API contract. Always check it before making API calls.
 
 ## UI Flow
 1. Topic input → `POST /api/jobs/clarify` → render clarifying questions as inputs

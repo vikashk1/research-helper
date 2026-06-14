@@ -77,6 +77,10 @@ research-helper/
 └── pom.xml
 ```
 
+## API
+
+See [docs/api-reference.md](docs/api-reference.md).
+
 ## Future Considerations
 - Swap H2 for PostgreSQL for production
 - Add real authentication if needed
