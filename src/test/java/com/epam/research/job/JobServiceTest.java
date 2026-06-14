@@ -35,6 +35,9 @@ class JobServiceTest {
     @Mock
     private SseService sseService;
 
+    @Mock
+    private JobFutureRegistry jobFutureRegistry;
+
     @InjectMocks
     private JobService jobService;
 
@@ -201,5 +204,69 @@ class JobServiceTest {
         Job result = jobService.createJob("AI trends", Map.of());
 
         assertThat(result.getId()).isEqualTo(42L);
+    }
+
+    // --- cancelJob ---
+
+    @Test
+    void should_cancelJob_when_jobIsInProgress() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setStatus(JobStatus.IN_PROGRESS);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.cancelJob(1L);
+
+        ArgumentCaptor<Job> jobCaptor = ArgumentCaptor.forClass(Job.class);
+        verify(jobRepository, atLeastOnce()).save(jobCaptor.capture());
+        assertThat(jobCaptor.getValue().getStatus()).isEqualTo(JobStatus.CANCELLED);
+    }
+
+    @Test
+    void should_cancelJob_when_jobIsPending() {
+        Job job = new Job();
+        job.setId(2L);
+        job.setStatus(JobStatus.PENDING);
+        when(jobRepository.findById(2L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.cancelJob(2L);
+
+        verify(jobFutureRegistry).cancel(2L);
+        verify(sseService).complete(2L);
+    }
+
+    @Test
+    void should_throwConflict_when_cancelCalledOnCompletedJob() {
+        Job job = new Job();
+        job.setId(3L);
+        job.setStatus(JobStatus.COMPLETED);
+        when(jobRepository.findById(3L)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> jobService.cancelJob(3L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void should_throwConflict_when_cancelCalledOnFailedJob() {
+        Job job = new Job();
+        job.setId(4L);
+        job.setStatus(JobStatus.FAILED);
+        when(jobRepository.findById(4L)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> jobService.cancelJob(4L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void should_throwConflict_when_cancelCalledOnAlreadyCancelledJob() {
+        Job job = new Job();
+        job.setId(5L);
+        job.setStatus(JobStatus.CANCELLED);
+        when(jobRepository.findById(5L)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> jobService.cancelJob(5L))
+                .isInstanceOf(ResponseStatusException.class);
     }
 }

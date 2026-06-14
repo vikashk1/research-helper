@@ -2,6 +2,7 @@ package com.epam.research.job;
 
 import com.epam.research.agent.CoordinatorAgent;
 import com.epam.research.sse.SseService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 
 @Slf4j
 @RestController
@@ -21,6 +23,7 @@ public class JobController {
     private final JobService jobService;
     private final CoordinatorAgent coordinatorAgent;
     private final SseService sseService;
+    private final JobFutureRegistry jobFutureRegistry;
 
     @PostMapping("/clarify")
     public List<String> getClarificationQuestions(@RequestBody Map<String, String> body) {
@@ -32,12 +35,14 @@ public class JobController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @SuppressWarnings("unchecked")
+    @Operation(summary = "Create a new research job and start the pipeline")
     public Job createJob(@RequestBody Map<String, Object> body) {
         String topic = (String) body.get("topic");
         Map<String, String> clarificationAnswers = (Map<String, String>) body.get("clarificationAnswers");
         log.info("POST /api/jobs - topic: '{}'", topic);
         Job job = jobService.createJob(topic, clarificationAnswers);
-        coordinatorAgent.runPipeline(job.getId(), topic, clarificationAnswers);
+        Future<Void> future = coordinatorAgent.runPipeline(job.getId(), topic, clarificationAnswers);
+        jobFutureRegistry.register(job.getId(), future);
         log.debug("Pipeline dispatched for job {}", job.getId());
         return job;
     }
@@ -55,12 +60,21 @@ public class JobController {
     }
 
     @PostMapping("/{id}/restart")
+    @Operation(summary = "Restart a failed or completed research job")
     public Job restartJob(@PathVariable Long id) {
         log.info("POST /api/jobs/{}/restart", id);
         Job job = jobService.restartJob(id);
-        coordinatorAgent.runPipeline(job.getId(), job.getTopic(), job.getClarificationAnswers());
+        Future<Void> future = coordinatorAgent.runPipeline(job.getId(), job.getTopic(), job.getClarificationAnswers());
+        jobFutureRegistry.register(job.getId(), future);
         log.debug("Pipeline re-dispatched for job {}", id);
         return job;
+    }
+
+    @PostMapping("/{id}/cancel")
+    @Operation(summary = "Cancel a running or pending research job")
+    public Job cancelJob(@PathVariable Long id) {
+        log.info("POST /api/jobs/{}/cancel", id);
+        return jobService.cancelJob(id);
     }
 
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

@@ -1,5 +1,6 @@
 package com.epam.research.agent;
 
+import com.epam.research.job.JobFutureRegistry;
 import com.epam.research.job.JobService;
 import com.epam.research.sse.SseService;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ class CoordinatorAgentTest {
     @Mock private SummarizerAgent summarizerAgent;
     @Mock private ReportFormatterAgent reportFormatterAgent;
     @Mock private SseService sseService;
+    @Mock private JobFutureRegistry jobFutureRegistry;
 
     private CoordinatorAgent coordinatorAgent;
 
@@ -39,7 +41,7 @@ class CoordinatorAgentTest {
     void setUp() {
         // retryDelayMs=0 so retry tests run instantly
         coordinatorAgent = new CoordinatorAgent(
-                jobService, webSearchAgent, summarizerAgent, reportFormatterAgent, sseService, 0L);
+                jobService, webSearchAgent, summarizerAgent, reportFormatterAgent, sseService, jobFutureRegistry, 0L);
     }
 
     private void stubHappyPath() {

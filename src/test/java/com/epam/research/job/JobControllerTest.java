@@ -12,11 +12,14 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.concurrent.Future;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,6 +41,9 @@ class JobControllerTest {
     @MockBean
     private SseService sseService;
 
+    @MockBean
+    private JobFutureRegistry jobFutureRegistry;
+
     @Test
     void should_returnQuestions_when_clarifyEndpointCalled() throws Exception {
         when(jobService.getClarificationQuestions("climate change"))
@@ -55,6 +61,7 @@ class JobControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void should_createJobAndStartPipeline_when_createEndpointCalled() throws Exception {
         Job job = new Job();
         job.setId(1L);
@@ -62,6 +69,7 @@ class JobControllerTest {
         job.setStatus(JobStatus.PENDING);
 
         when(jobService.createJob(eq("climate change"), any())).thenReturn(job);
+        when(coordinatorAgent.runPipeline(any(), any(), any())).thenReturn(mock(Future.class));
 
         mockMvc.perform(post("/api/jobs")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -116,6 +124,7 @@ class JobControllerTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void should_restartJobAndRePipelineAndReturn200_when_restartEndpointCalled() throws Exception {
         Job job = new Job();
         job.setId(1L);
@@ -123,6 +132,7 @@ class JobControllerTest {
         job.setStatus(JobStatus.PENDING);
 
         when(jobService.restartJob(1L)).thenReturn(job);
+        when(coordinatorAgent.runPipeline(any(), any(), any())).thenReturn(mock(Future.class));
 
         mockMvc.perform(post("/api/jobs/1/restart"))
                 .andExpect(status().isOk())
@@ -151,5 +161,40 @@ class JobControllerTest {
                 .andExpect(status().isOk());
 
         verify(sseService).register(1L);
+    }
+
+    @Test
+    void should_cancelJobAndReturnUpdatedJob_when_cancelEndpointCalled() throws Exception {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTopic("climate change");
+        job.setStatus(JobStatus.CANCELLED);
+
+        when(jobService.cancelJob(1L)).thenReturn(job);
+
+        mockMvc.perform(post("/api/jobs/1/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(jobService).cancelJob(1L);
+    }
+
+    @Test
+    void should_return409_when_cancelCalledOnNonCancellableJob() throws Exception {
+        when(jobService.cancelJob(1L))
+                .thenThrow(new ResponseStatusException(CONFLICT, "Job 1 cannot be cancelled in status: COMPLETED"));
+
+        mockMvc.perform(post("/api/jobs/1/cancel"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void should_return404_when_cancelCalledForMissingJob() throws Exception {
+        when(jobService.cancelJob(99L))
+                .thenThrow(new ResponseStatusException(NOT_FOUND, "Job not found: 99"));
+
+        mockMvc.perform(post("/api/jobs/99/cancel"))
+                .andExpect(status().isNotFound());
     }
 }
