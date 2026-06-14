@@ -1,12 +1,17 @@
 package com.epam.research.agent;
 
+import com.epam.research.job.Job;
+import com.epam.research.job.JobFutureRegistry;
 import com.epam.research.job.JobService;
+import com.epam.research.job.JobStatus;
 import com.epam.research.sse.SseService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.Map;
 
@@ -18,6 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CoordinatorAgentTest {
 
     @Mock private JobService jobService;
@@ -25,6 +31,7 @@ class CoordinatorAgentTest {
     @Mock private SummarizerAgent summarizerAgent;
     @Mock private ReportFormatterAgent reportFormatterAgent;
     @Mock private SseService sseService;
+    @Mock private JobFutureRegistry jobFutureRegistry;
 
     private CoordinatorAgent coordinatorAgent;
 
@@ -39,7 +46,12 @@ class CoordinatorAgentTest {
     void setUp() {
         // retryDelayMs=0 so retry tests run instantly
         coordinatorAgent = new CoordinatorAgent(
-                jobService, webSearchAgent, summarizerAgent, reportFormatterAgent, sseService, 0L);
+                jobService, webSearchAgent, summarizerAgent, reportFormatterAgent, sseService, jobFutureRegistry, 0L);
+        // Default: job is IN_PROGRESS (not CANCELLED) so failure paths proceed normally
+        Job job = new Job();
+        job.setId(JOB_ID);
+        job.setStatus(JobStatus.IN_PROGRESS);
+        when(jobService.getJob(JOB_ID)).thenReturn(job);
     }
 
     private void stubHappyPath() {

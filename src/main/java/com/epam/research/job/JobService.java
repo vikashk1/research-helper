@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -22,6 +23,7 @@ public class JobService {
     private final JobLogRepository jobLogRepository;
     private final ClarificationAgent clarificationAgent;
     private final SseService sseService;
+    private final JobFutureRegistry jobFutureRegistry;
 
     public List<String> getClarificationQuestions(String topic) {
         return clarificationAgent.generateQuestions(topic);
@@ -93,6 +95,22 @@ public class JobService {
         job.setErrorMessage(null);
         Job saved = jobRepository.save(job);
         log.info("Job {} restarted", jobId);
+        return saved;
+    }
+
+    public Job cancelJob(Long jobId) {
+        Job job = getJob(jobId);
+        Set<JobStatus> cancellable = Set.of(JobStatus.PENDING, JobStatus.IN_PROGRESS);
+        if (!cancellable.contains(job.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Job " + jobId + " cannot be cancelled in status: " + job.getStatus());
+        }
+        jobFutureRegistry.cancel(jobId);
+        job.setStatus(JobStatus.CANCELLED);
+        job.setErrorMessage("Cancelled by user");
+        Job saved = jobRepository.save(job);
+        sseService.complete(jobId);
+        log.info("Job {} status -> CANCELLED", jobId);
         return saved;
     }
 }

@@ -38,6 +38,9 @@ class JobControllerTest {
     @MockBean
     private SseService sseService;
 
+    @MockBean
+    private JobFutureRegistry jobFutureRegistry;
+
     @Test
     void should_returnQuestions_when_clarifyEndpointCalled() throws Exception {
         when(jobService.getClarificationQuestions("climate change"))
@@ -151,5 +154,41 @@ class JobControllerTest {
                 .andExpect(status().isOk());
 
         verify(sseService).register(1L);
+    }
+
+    @Test
+    void should_cancelJobAndReturn200_when_cancelEndpointCalled() throws Exception {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTopic("climate change");
+        job.setStatus(JobStatus.CANCELLED);
+
+        when(jobService.cancelJob(1L)).thenReturn(job);
+
+        mockMvc.perform(post("/api/jobs/1/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        verify(jobService).cancelJob(1L);
+    }
+
+    @Test
+    void should_return404_when_cancelCalledForMissingJob() throws Exception {
+        when(jobService.cancelJob(99L))
+                .thenThrow(new ResponseStatusException(NOT_FOUND, "Job not found: 99"));
+
+        mockMvc.perform(post("/api/jobs/99/cancel"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void should_return409_when_cancelCalledForNonCancellableJob() throws Exception {
+        when(jobService.cancelJob(1L))
+                .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT,
+                        "Job 1 cannot be cancelled in status: COMPLETED"));
+
+        mockMvc.perform(post("/api/jobs/1/cancel"))
+                .andExpect(status().isConflict());
     }
 }

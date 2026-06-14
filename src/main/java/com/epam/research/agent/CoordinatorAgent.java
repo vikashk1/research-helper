@@ -1,15 +1,19 @@
 package com.epam.research.agent;
 
+import com.epam.research.job.JobFutureRegistry;
 import com.epam.research.job.JobService;
+import com.epam.research.job.JobStatus;
 import com.epam.research.sse.SseService;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -21,6 +25,7 @@ public class CoordinatorAgent {
     private final SummarizerAgent summarizerAgent;
     private final ReportFormatterAgent reportFormatterAgent;
     private final SseService sseService;
+    private final JobFutureRegistry jobFutureRegistry;
     private final long retryDelayMs;
 
     public CoordinatorAgent(
@@ -29,17 +34,19 @@ public class CoordinatorAgent {
             SummarizerAgent summarizerAgent,
             ReportFormatterAgent reportFormatterAgent,
             SseService sseService,
+            JobFutureRegistry jobFutureRegistry,
             @Value("${coordinator.retry.delay-ms:1000}") long retryDelayMs) {
         this.jobService = jobService;
         this.webSearchAgent = webSearchAgent;
         this.summarizerAgent = summarizerAgent;
         this.reportFormatterAgent = reportFormatterAgent;
         this.sseService = sseService;
+        this.jobFutureRegistry = jobFutureRegistry;
         this.retryDelayMs = retryDelayMs;
     }
 
     @Async
-    public void runPipeline(Long jobId, String topic, Map<String, String> clarificationAnswers) {
+    public Future<Void> runPipeline(Long jobId, String topic, Map<String, String> clarificationAnswers) {
         MDC.put("jobId", String.valueOf(jobId));
         long pipelineStart = System.currentTimeMillis();
         try {
@@ -63,13 +70,24 @@ public class CoordinatorAgent {
             jobService.markCompleted(jobId, report);
             sseService.complete(jobId);
             log.info("Pipeline completed for job {} in {}ms", jobId, System.currentTimeMillis() - pipelineStart);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.info("Pipeline interrupted (cancelled) for job {} after {}ms", jobId, System.currentTimeMillis() - pipelineStart);
+            if (jobService.getJob(jobId).getStatus() != JobStatus.CANCELLED) {
+                jobService.markFailed(jobId, "Pipeline interrupted");
+                sseService.complete(jobId);
+            }
         } catch (Exception e) {
             log.error("Pipeline failed for job {} after {}ms", jobId, System.currentTimeMillis() - pipelineStart, e);
-            jobService.markFailed(jobId, e.getMessage());
-            sseService.complete(jobId);
+            if (jobService.getJob(jobId).getStatus() != JobStatus.CANCELLED) {
+                jobService.markFailed(jobId, e.getMessage());
+                sseService.complete(jobId);
+            }
         } finally {
+            jobFutureRegistry.remove(jobId);
             MDC.remove("jobId");
         }
+        return new AsyncResult<>(null);
     }
 
     private <T> T withRetry(Callable<T> action) throws Exception {
