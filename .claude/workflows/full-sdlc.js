@@ -3,9 +3,9 @@ export const meta = {
   description: 'End-to-end SDLC: prioritize, estimate, implement, test, review, ship',
   phases: [
     { title: 'Prioritize', detail: 'PM creates GitHub issues with acceptance criteria' },
-    { title: 'Estimate', detail: 'Tech lead sizes issues and picks approach' },
+    { title: 'Estimate', detail: 'Tech lead sizes issues — flows into Implement without barrier' },
     { title: 'Implement', detail: 'Dev agents fix issues in isolated worktrees' },
-    { title: 'Test', detail: 'QA validates against acceptance criteria' },
+    { title: 'Test', detail: 'QA validates sequentially (one checkout at a time)' },
     { title: 'Review', detail: 'Code reviewer gates merge readiness' },
     { title: 'Ship', detail: 'Final PR URLs ready for human merge' },
   ],
@@ -80,19 +80,9 @@ let validIssues
 if (goal) {
   log(`Goal: ${goal}`)
   const created = await agent(
-    `You are the product manager. The user's goal is:
+    `The user's goal is: "${goal}"
 
-"${goal}"
-
-Steps:
-1. Run: gh issue list --state open --json number,title,labels --limit 20
-2. Read relevant source files to understand current state.
-3. Decide what issue(s) to create to achieve the goal.
-4. For each issue, run: gh issue create --title "..." --body "..." --label "type:feature" --label "priority:high"
-   Body must have ## Goal and ## Acceptance Criteria sections with checkboxes.
-5. Return the created issues as an array.
-
-Return the issues you created as {issues: [...]} with number, title, labels, and acceptance criteria (ac) as string array.`,
+Create issue(s) to achieve it. Return them as {issues: [...]} with number, title, labels, and ac (acceptance criteria as string array).`,
     { label: 'product-manager', agentType: 'product-manager', schema: ISSUES_SCHEMA }
   )
   validIssues = (created && created.issues || []).filter(Boolean)
@@ -100,132 +90,78 @@ Return the issues you created as {issues: [...]} with number, title, labels, and
 } else {
   log('No goal provided — picking from open backlog')
   const picked = await agent(
-    `You are the product manager. No new goal was given — pick the best issue(s) from the open backlog.
-
-Steps:
-1. Run: gh issue list --state open --json number,title,body,labels --limit 30
-2. Score issues by: priority label > bugs over features > age > clarity of acceptance criteria.
-3. Pick the single highest-value issue that is ready to implement (has clear AC, isn't blocked).
-4. If the chosen issue lacks acceptance criteria in its body, add them via: gh issue comment <N> --body "## Acceptance Criteria\n- [ ] ..."
-5. Return the picked issue.
-
-Return the picked issues as {issues: [...]} with number, title, labels, and acceptance criteria (ac) as string array.`,
+    `No new goal given — pick from the open backlog. Return as {issues: [...]} with number, title, labels, and ac (acceptance criteria as string array).`,
     { label: 'product-manager-pick', agentType: 'product-manager', schema: ISSUES_SCHEMA }
   )
   validIssues = (picked && picked.issues || []).filter(Boolean)
   log(`Picked ${validIssues.length} issue(s) from backlog`)
 }
 
-// --- Phase 2: Estimate ---
+// --- Phases 2+3: Estimate → Implement (per-issue pipeline, no barrier) ---
 phase('Estimate')
-const estimates = await parallel(validIssues.map(issue => () =>
-  agent(
-    `Estimate GitHub issue #${issue.number}: "${issue.title}"
+const fixes = await pipeline(
+  validIssues,
+  issue => agent(
+    `Estimate issue #${issue.number}: "${issue.title}"
 
 Acceptance criteria:
 ${issue.ac.map(a => '- ' + a).join('\n')}
 
-Steps:
-1. Read relevant source files to assess complexity.
-2. Post a comment on the issue: gh issue comment ${issue.number} --body "## Estimate: <S|M|L|XL>\n\n## Approach\n...\n\n## Risks\n..."
-3. Add size label: gh issue edit ${issue.number} --add-label "size:<S|M|L|XL>"
-4. If XL, set should_split=true and explain in approach what sub-issues you'd create.
-
-Return your estimate.`,
-    { label: `estimate-#${issue.number}`, agentType: 'tech-lead', schema: ESTIMATE_SCHEMA }
-  )
-))
-
-const doable = validIssues.filter((issue, i) => estimates[i] && !estimates[i].should_split)
-const tooLarge = validIssues.filter((issue, i) => estimates[i] && estimates[i].should_split)
-if (tooLarge.length) log(`${tooLarge.length} issue(s) marked XL — skipping implementation, need splitting`)
-log(`${doable.length} issue(s) ready for implementation`)
-
-// --- Phase 3: Implement ---
-phase('Implement')
-const fixes = await pipeline(
-  doable,
-  issue => {
+Post your estimate comment and add size label. Return your estimate.`,
+    { label: `estimate-#${issue.number}`, phase: 'Estimate', agentType: 'tech-lead', schema: ESTIMATE_SCHEMA }
+  ),
+  (est, issue) => {
+    if (!est || est.should_split) {
+      log(`#${issue.number} is XL — skipping, needs splitting`)
+      return null
+    }
     const isUI = (issue.labels || []).some(l => /front|ui|css|html/i.test(l))
     const agentType = isUI ? 'frontend-expert' : 'springboot-expert'
     return agent(
-      `Implement GitHub issue #${issue.number}: "${issue.title}"
+      `Implement issue #${issue.number}: "${issue.title}"
 
 Acceptance criteria:
 ${issue.ac.map(a => '- ' + a).join('\n')}
 
-Branch naming: Use the pattern <type>/ISSUE-<number>-<slug>
-- type: feature (new functionality), bugfix (bug), chore (cleanup/config)
-- slug: 2-4 lowercase words from the title, hyphenated
-- Example: feature/ISSUE-${issue.number}-add-health-check
-
-Steps:
-1. Create and checkout branch: git checkout -b <branch-name>
-2. Read relevant files.
-3. Implement the feature/fix.
-4. Run mvn test -q (skip for frontend-only). If tests fail, fix them. If still failing, return fixed=false.
-5. Commit: feat(#${issue.number}): <short description>
-6. Push: git push -u origin HEAD
-7. Open draft PR: gh pr create --title "feat(#${issue.number}): <desc>" --body "Closes #${issue.number}" --base main --draft
-
-Only push/PR if tests pass. Return fixed, pr_url, and summary.`,
-      { label: `dev-#${issue.number}`, agentType, isolation: 'worktree', schema: FIX_SCHEMA }
+Branch: <type>/ISSUE-${issue.number}-<slug> (type: feature|bugfix|chore, slug: 2-4 words from title).
+Only push and open a draft PR (with "Closes #${issue.number}") if all tests pass. Otherwise return fixed=false.`,
+      { label: `dev-#${issue.number}`, phase: 'Implement', agentType, isolation: 'worktree', schema: FIX_SCHEMA }
     )
   }
 )
 
 const implemented = fixes.filter(f => f && f.fixed && f.pr_url)
-log(`${implemented.length}/${doable.length} implemented with PRs`)
+log(`${implemented.length}/${validIssues.length} implemented with PRs`)
 
 if (!implemented.length) {
   log('No PRs to test or review — stopping.')
   return { issues: validIssues.length, implemented: 0, shipped: [] }
 }
 
-// --- Phase 4: Test ---
+// --- Phase 4: Test (serial — one branch checkout at a time) ---
 phase('Test')
-const prNumbers = implemented.map(f => f.pr_url.match(/\/pull\/(\d+)/)?.[1]).filter(Boolean)
-
 const qaResults = []
-for (let i = 0; i < prNumbers.length; i++) {
-  const prNum = prNumbers[i]
+for (let i = 0; i < implemented.length; i++) {
+  const prNum = implemented[i].pr_url.match(/\/pull\/(\d+)/)?.[1]
+  if (!prNum) continue
+  const issue = validIssues.find(iss => implemented[i].pr_url.includes(`ISSUE-${iss.number}`) || implemented[i].summary.includes(`#${iss.number}`))
   const result = await agent(
-    `QA issue #${doable[i].number}, PR #${prNum}.
+    `QA PR #${prNum}.${issue ? `\n\nAcceptance criteria:\n${issue.ac.map(a => '- ' + a).join('\n')}` : ''}
 
-Acceptance criteria:
-${doable[i].ac.map(a => '- ' + a).join('\n')}
-
-Steps:
-1. Checkout the PR branch: gh pr checkout ${prNum}
-2. Run mvn test -q — must pass.
-3. gh pr diff ${prNum} — read what changed.
-4. For UI changes: use Playwright to verify (browser_navigate to http://localhost:8080, browser_snapshot).
-5. Check each acceptance criterion.
-6. Verdict: gh pr review ${prNum} --approve or --request-changes with reason.
-7. Checkout back to main: git checkout main
-
-Return passed (boolean) and details.`,
+Validate and post your verdict on the PR.`,
     { label: `qa-#${prNum}`, agentType: 'qa-engineer', schema: QA_SCHEMA }
   )
-  qaResults.push(result)
+  qaResults.push({ prNum, result })
 }
 
-const passed = prNumbers.filter((_, i) => qaResults[i] && qaResults[i].passed)
-log(`QA: ${passed.length}/${prNumbers.length} passed`)
+const passed = qaResults.filter(q => q.result && q.result.passed).map(q => q.prNum)
+log(`QA: ${passed.length}/${implemented.length} passed`)
 
-// --- Phase 5: Review ---
+// --- Phase 5: Review (parallel — no shared state) ---
 phase('Review')
 const reviews = await parallel(passed.map(prNum => () =>
   agent(
-    `Review PR #${prNum}.
-
-Steps:
-1. gh pr diff ${prNum} — read full diff.
-2. Check for correctness bugs, security issues, design violations.
-3. Post inline comments for any findings.
-4. Final verdict: gh pr review ${prNum} --approve or --request-changes.
-
-Return approved (boolean), comments_posted count, and summary.`,
+    `Review PR #${prNum}. Post inline comments and your final verdict.`,
     { label: `review-#${prNum}`, agentType: 'code-reviewer', schema: REVIEW_SCHEMA }
   )
 ))

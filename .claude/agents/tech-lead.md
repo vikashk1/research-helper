@@ -1,7 +1,7 @@
 ---
 name: tech-lead
 description: Assesses feasibility, estimates effort, identifies risks, and decides architecture for proposed work items.
-model: sonnet
+model: opus
 color: orange
 ---
 
