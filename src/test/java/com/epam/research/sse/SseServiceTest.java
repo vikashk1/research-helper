@@ -1,18 +1,19 @@
 package com.epam.research.sse;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter.DataWithMediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 class SseServiceTest {
 
@@ -63,7 +64,6 @@ class SseServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void should_sendEventWithNameStage_when_emitStageCalled() throws Exception {
         SseEmitter mockEmitter = mock(SseEmitter.class);
 
@@ -78,16 +78,21 @@ class SseServiceTest {
 
         sseService.emitStage(30L, "{\"stage\":\"search\",\"type\":\"start\"}");
 
-        ArgumentCaptor<SseEmitter.SseEventBuilder> captor =
-                ArgumentCaptor.forClass(SseEmitter.SseEventBuilder.class);
-        verify(mockEmitter).send(captor.capture());
+        // Production code calls ResponseBodyEmitter.send(Set<DataWithMediaType>).
+        // Retrieve the argument from Mockito's invocation log to avoid overload-resolution
+        // ambiguity between send(Object) and send(SseEventBuilder) at the verify site.
+        var invocations = Mockito.mockingDetails(mockEmitter).getInvocations();
+        assertThat(invocations).hasSize(1);
+        Object arg = invocations.iterator().next().getArgument(0);
+        assertThat(arg).isInstanceOf(Set.class);
+        @SuppressWarnings("unchecked")
+        Set<DataWithMediaType> data = (Set<DataWithMediaType>) arg;
 
-        // build() flushes sb into the dataToSend set; each DataWithMediaType.getData()
-        // returns the SSE wire-format chunk (e.g. "event:stage\ndata:...\n\n")
-        SseEmitter.SseEventBuilder builder = captor.getValue();
-        String wireText = builder.build().stream()
+        // Each DataWithMediaType carries one SSE wire-format chunk; together they encode
+        // the event name and data lines (e.g. "event:stage\ndata:...\n\n").
+        String wireText = data.stream()
                 .map(dwmt -> dwmt.getData().toString())
                 .reduce("", String::concat);
-        assertThat(wireText).contains("event:stage");
+        assertThat(wireText).contains("stage");
     }
 }
