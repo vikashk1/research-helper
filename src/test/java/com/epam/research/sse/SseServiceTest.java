@@ -93,6 +93,6 @@ class SseServiceTest {
         String wireText = data.stream()
                 .map(dwmt -> dwmt.getData().toString())
                 .reduce("", String::concat);
-        assertThat(wireText).contains("stage");
+        assertThat(wireText).contains("event:stage");
     }
 }

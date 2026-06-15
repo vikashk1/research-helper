@@ -125,11 +125,12 @@ public class JobService {
                         ? Duration.between(jobStage.getStartedAt(), now).toMillis()
                         : 0;
             }
-            default -> { // "activity"
+            case "activity" -> {
                 elapsed = jobStage.getStartedAt() != null
                         ? Duration.between(jobStage.getStartedAt(), now).toMillis()
                         : 0;
             }
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown type: " + type);
         }
 
         jobStageRepository.save(jobStage);
