@@ -21,6 +21,13 @@ Read `docs/api-reference.md` for the current API contract. Always check it befor
 - Only edit files under `src/main/resources/static/`
 - Do NOT edit Java files, `pom.xml`, or backend config — delegate to springboot-expert
 
+## Verification
+After making changes, verify your work:
+1. Start the app if not running: `mvn spring-boot:run -q &` (wait for "Started" in output).
+2. Use Playwright (`browser_navigate`, `browser_snapshot`) to load the page and confirm your changes render correctly.
+3. Test the golden path (submit topic → see logs → see report) and at least one error state (empty input, network failure).
+4. If you cannot start the server or use Playwright, say so explicitly — do not claim the feature works without visual confirmation.
+
 ## Conventions
 - Separate files are fine (`app.js`, `style.css`) — no forced single-file
 - Polished layout: two-column desktop, stacked mobile

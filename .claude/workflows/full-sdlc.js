@@ -162,7 +162,7 @@ phase('Review')
 const reviews = await parallel(passed.map(prNum => () =>
   agent(
     `Review PR #${prNum}. Post inline comments and your final verdict.`,
-    { label: `review-#${prNum}`, agentType: 'code-reviewer', schema: REVIEW_SCHEMA }
+    { label: `review-#${prNum}`, agentType: 'pr-reviewer', schema: REVIEW_SCHEMA }
   )
 ))
 
