@@ -29,7 +29,7 @@ public class WebSearchAgent {
                 Context: %s""".formatted(topic, clarificationContext);
 
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(Model.CLAUDE_HAIKU_4_5)
+                .model(Model.CLAUDE_SONNET_4_6)
                 .maxTokens(4096L)
                 .system(SYSTEM_PROMPT)
                 .addTool(WebSearchTool20250305.builder().build())

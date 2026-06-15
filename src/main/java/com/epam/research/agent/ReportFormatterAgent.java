@@ -31,7 +31,7 @@ public class ReportFormatterAgent {
                 Summarized Content: %s""".formatted(topic, clarificationContext, summarizedContent);
 
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(Model.CLAUDE_HAIKU_4_5)
+                .model(Model.CLAUDE_SONNET_4_6)
                 .maxTokens(2048L)
                 .system(SYSTEM_PROMPT)
                 .addUserMessage(userMessage)
