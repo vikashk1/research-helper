@@ -89,7 +89,7 @@ class ReportFormatterAgentTest {
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
-        assertThat(params.model()).isEqualTo(Model.CLAUDE_SONNET_4_6);
+        assertThat(params.model()).isEqualTo(Model.CLAUDE_HAIKU_4_5);
         assertThat(params.maxTokens()).isGreaterThanOrEqualTo(2048L);
     }
 

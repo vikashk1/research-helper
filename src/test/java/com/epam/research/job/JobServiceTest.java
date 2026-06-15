@@ -30,6 +30,9 @@ class JobServiceTest {
     private JobLogRepository jobLogRepository;
 
     @Mock
+    private JobStageRepository jobStageRepository;
+
+    @Mock
     private ClarificationAgent clarificationAgent;
 
     @Mock
@@ -155,6 +158,7 @@ class JobServiceTest {
         jobService.restartJob(1L);
 
         verify(jobLogRepository).deleteAllByJobId(1L);
+        verify(jobStageRepository).deleteAllByJobId(1L);
     }
 
     @Test
@@ -168,7 +172,7 @@ class JobServiceTest {
     // --- deleteJob ---
 
     @Test
-    void should_deleteLogsAndJob_when_deleteJobCalled() {
+    void should_deleteLogsAndStagesAndJob_when_deleteJobCalled() {
         Job job = new Job();
         job.setId(1L);
         when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
@@ -176,6 +180,7 @@ class JobServiceTest {
         jobService.deleteJob(1L);
 
         verify(jobLogRepository).deleteAllByJobId(1L);
+        verify(jobStageRepository).deleteAllByJobId(1L);
         verify(jobRepository).delete(job);
     }
 
@@ -190,7 +195,7 @@ class JobServiceTest {
     // --- deleteAllCompleted ---
 
     @Test
-    void should_deleteAllCompletedJobsAndTheirLogs() {
+    void should_deleteAllCompletedJobsAndTheirLogsAndStages() {
         Job job1 = new Job();
         job1.setId(1L);
         Job job2 = new Job();
@@ -202,6 +207,8 @@ class JobServiceTest {
         assertThat(result).isEqualTo(2);
         verify(jobLogRepository).deleteAllByJobId(1L);
         verify(jobLogRepository).deleteAllByJobId(2L);
+        verify(jobStageRepository).deleteAllByJobId(1L);
+        verify(jobStageRepository).deleteAllByJobId(2L);
         verify(jobRepository).deleteAll(List.of(job1, job2));
     }
 

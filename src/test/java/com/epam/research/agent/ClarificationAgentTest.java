@@ -147,7 +147,7 @@ class ClarificationAgentTest {
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
         assertThat(params.maxTokens()).isEqualTo(512L);
-        assertThat(params.model()).isEqualTo(Model.CLAUDE_SONNET_4_6);
+        assertThat(params.model()).isEqualTo(Model.CLAUDE_HAIKU_4_5);
     }
 
     @Test

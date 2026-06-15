@@ -45,6 +45,11 @@ public class Job {
     @OrderBy("createdAt ASC")
     private List<JobLog> logs = new ArrayList<>();
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<JobStage> stages = new ArrayList<>();
+
     @PrePersist
     void onCreate() {
         createdAt = LocalDateTime.now();
