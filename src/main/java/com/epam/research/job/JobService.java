@@ -89,7 +89,6 @@ public class JobService {
     public void deleteJob(Long jobId) {
         Job job = getJob(jobId);
         jobLogRepository.deleteAllByJobId(jobId);
-        jobStageRepository.deleteAllByJobId(jobId);
         jobRepository.delete(job);
         log.info("Job {} deleted", jobId);
     }
@@ -99,7 +98,6 @@ public class JobService {
         List<Job> completed = jobRepository.findAllByStatus(JobStatus.COMPLETED);
         for (Job job : completed) {
             jobLogRepository.deleteAllByJobId(job.getId());
-            jobStageRepository.deleteAllByJobId(job.getId());
         }
         jobRepository.deleteAll(completed);
         log.info("Deleted {} completed jobs", completed.size());
