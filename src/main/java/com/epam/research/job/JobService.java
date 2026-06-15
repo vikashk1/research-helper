@@ -2,6 +2,8 @@ package com.epam.research.job;
 
 import com.epam.research.agent.ClarificationAgent;
 import com.epam.research.sse.SseService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -25,6 +27,7 @@ public class JobService {
     private final JobStageRepository jobStageRepository;
     private final ClarificationAgent clarificationAgent;
     private final SseService sseService;
+    private final ObjectMapper objectMapper;
 
     public List<String> getClarificationQuestions(String topic) {
         return clarificationAgent.generateQuestions(topic);
@@ -90,7 +93,12 @@ public class JobService {
     @Transactional
     public void appendStageEvent(Long jobId, String stage, String type, String message) {
         Job job = getJob(jobId);
-        PipelineStage pipelineStage = PipelineStage.valueOf(stage.toUpperCase());
+        PipelineStage pipelineStage;
+        try {
+            pipelineStage = PipelineStage.valueOf(stage.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown stage: " + stage);
+        }
 
         JobStage jobStage = jobStageRepository.findByJobIdAndStage(jobId, pipelineStage)
                 .orElseGet(() -> {
@@ -126,10 +134,17 @@ public class JobService {
 
         jobStageRepository.save(jobStage);
 
-        String json = String.format(
-                "{\"stage\":\"%s\",\"type\":\"%s\",\"message\":\"%s\",\"elapsed\":%d}",
-                stage, type, message.replace("\"", "\\\""), elapsed
-        );
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(Map.of(
+                    "stage", stage,
+                    "type", type,
+                    "message", message,
+                    "elapsed", elapsed
+            ));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize stage event", e);
+        }
         sseService.emitStage(jobId, json);
         log.debug("Job {} stage event: stage={}, type={}, elapsed={}ms", jobId, stage, type, elapsed);
     }

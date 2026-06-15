@@ -24,6 +24,14 @@ public class SseService {
     }
 
     public void emit(Long jobId, String message) {
+        sendToEmitters(jobId, SseEmitter.event().data(message));
+    }
+
+    public void emitStage(Long jobId, String json) {
+        sendToEmitters(jobId, SseEmitter.event().name("stage").data(json));
+    }
+
+    private void sendToEmitters(Long jobId, SseEmitter.SseEventBuilder event) {
         List<SseEmitter> jobEmitters = emitters.get(jobId);
         if (jobEmitters == null) {
             log.debug("No SSE clients for job {}, skipping emit", jobId);
@@ -31,22 +39,7 @@ public class SseService {
         }
         for (SseEmitter emitter : jobEmitters) {
             try {
-                emitter.send(SseEmitter.event().data(message));
-            } catch (IOException e) {
-                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
-            }
-        }
-    }
-
-    public void emitStage(Long jobId, String json) {
-        List<SseEmitter> jobEmitters = emitters.get(jobId);
-        if (jobEmitters == null) {
-            log.debug("No SSE clients for job {}, skipping emitStage", jobId);
-            return;
-        }
-        for (SseEmitter emitter : jobEmitters) {
-            try {
-                emitter.send(SseEmitter.event().name("stage").data(json));
+                emitter.send(event);
             } catch (IOException e) {
                 log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
             }

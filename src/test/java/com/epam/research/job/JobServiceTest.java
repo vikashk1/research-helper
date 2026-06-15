@@ -2,13 +2,16 @@ package com.epam.research.job;
 
 import com.epam.research.agent.ClarificationAgent;
 import com.epam.research.sse.SseService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -37,6 +40,9 @@ class JobServiceTest {
 
     @Mock
     private SseService sseService;
+
+    @Spy
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private JobService jobService;
@@ -258,5 +264,98 @@ class JobServiceTest {
         Job result = jobService.createJob("AI trends", Map.of());
 
         assertThat(result.getId()).isEqualTo(42L);
+    }
+
+    // --- appendStageEvent ---
+
+    @Test
+    void should_createJobStageWithActiveStatus_when_typeIsStart() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findByJobIdAndStage(1L, PipelineStage.SEARCH)).thenReturn(Optional.empty());
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.appendStageEvent(1L, "search", "start", "starting search");
+
+        ArgumentCaptor<JobStage> captor = ArgumentCaptor.forClass(JobStage.class);
+        verify(jobStageRepository).save(captor.capture());
+        JobStage saved = captor.getValue();
+        assertThat(saved.getStatus()).isEqualTo(JobStageStatus.ACTIVE);
+        assertThat(saved.getStartedAt()).isNotNull();
+    }
+
+    @Test
+    void should_emitStageEventWithElapsedZero_when_typeIsStart() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findByJobIdAndStage(1L, PipelineStage.SEARCH)).thenReturn(Optional.empty());
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.appendStageEvent(1L, "search", "start", "starting search");
+
+        ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+        verify(sseService).emitStage(eq(1L), jsonCaptor.capture());
+        assertThat(jsonCaptor.getValue()).contains("\"elapsed\":0");
+    }
+
+    @Test
+    void should_setCompletedStatusAndEndedAt_when_typeIsEnd() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage existing = new JobStage();
+        existing.setJob(job);
+        existing.setStage(PipelineStage.SEARCH);
+        existing.setStatus(JobStageStatus.ACTIVE);
+        existing.setStartedAt(java.time.LocalDateTime.now().minusSeconds(2));
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findByJobIdAndStage(1L, PipelineStage.SEARCH)).thenReturn(Optional.of(existing));
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.appendStageEvent(1L, "search", "end", "done");
+
+        ArgumentCaptor<JobStage> captor = ArgumentCaptor.forClass(JobStage.class);
+        verify(jobStageRepository).save(captor.capture());
+        JobStage saved = captor.getValue();
+        assertThat(saved.getStatus()).isEqualTo(JobStageStatus.COMPLETED);
+        assertThat(saved.getEndedAt()).isNotNull();
+        ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+        verify(sseService).emitStage(eq(1L), jsonCaptor.capture());
+        assertThat(jsonCaptor.getValue()).doesNotContain("\"elapsed\":0");
+    }
+
+    @Test
+    void should_notChangeStatusOrTimestamps_when_typeIsActivity() {
+        Job job = new Job();
+        job.setId(1L);
+        JobStage existing = new JobStage();
+        existing.setJob(job);
+        existing.setStage(PipelineStage.SEARCH);
+        existing.setStatus(JobStageStatus.ACTIVE);
+        existing.setStartedAt(java.time.LocalDateTime.now().minusSeconds(1));
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findByJobIdAndStage(1L, PipelineStage.SEARCH)).thenReturn(Optional.of(existing));
+        when(jobStageRepository.save(any(JobStage.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.appendStageEvent(1L, "search", "activity", "still searching");
+
+        ArgumentCaptor<JobStage> captor = ArgumentCaptor.forClass(JobStage.class);
+        verify(jobStageRepository).save(captor.capture());
+        JobStage saved = captor.getValue();
+        assertThat(saved.getStatus()).isEqualTo(JobStageStatus.ACTIVE);
+        assertThat(saved.getEndedAt()).isNull();
+    }
+
+    @Test
+    void should_throw400_when_unknownStageNameProvided() {
+        Job job = new Job();
+        job.setId(1L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> jobService.appendStageEvent(1L, "INVALID_STAGE", "start", "msg"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
     }
 }
