@@ -26,6 +26,9 @@ All agents are `@Component`s with `UnsupportedOperationException` TODOs to imple
 - Only edit `pom.xml` and `src/main/resources/application*.properties|yml`
 - Do NOT edit files under `src/main/resources/static/` — delegate to frontend-expert
 
+## Approach
+- Follow TDD: write a failing test first, then implement the minimum code to pass, then refactor.
+
 ## Conventions
 - Constructor injection via Lombok `@RequiredArgsConstructor`
 - `@Slf4j` for logging, text blocks for multi-line strings
