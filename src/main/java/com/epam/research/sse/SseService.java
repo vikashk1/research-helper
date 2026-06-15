@@ -44,7 +44,8 @@ public class SseService {
             try {
                 emitter.send(data);
             } catch (IOException e) {
-                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
+                log.debug("SSE emitter for job {} disconnected, removing: {}", jobId, e.getMessage());
+                jobEmitters.remove(emitter);
             }
         }
     }
