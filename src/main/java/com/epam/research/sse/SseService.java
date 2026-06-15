@@ -38,6 +38,21 @@ public class SseService {
         }
     }
 
+    public void emitStage(Long jobId, String json) {
+        List<SseEmitter> jobEmitters = emitters.get(jobId);
+        if (jobEmitters == null) {
+            log.debug("No SSE clients for job {}, skipping emitStage", jobId);
+            return;
+        }
+        for (SseEmitter emitter : jobEmitters) {
+            try {
+                emitter.send(SseEmitter.event().name("stage").data(json));
+            } catch (IOException e) {
+                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
+            }
+        }
+    }
+
     public void complete(Long jobId) {
         List<SseEmitter> jobEmitters = emitters.remove(jobId);
         if (jobEmitters == null) {

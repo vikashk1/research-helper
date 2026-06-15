@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -83,6 +85,53 @@ public class JobService {
         job.setErrorMessage(reason);
         jobRepository.save(job);
         log.warn("Job {} status -> FAILED, reason: {}", jobId, reason);
+    }
+
+    @Transactional
+    public void appendStageEvent(Long jobId, String stage, String type, String message) {
+        Job job = getJob(jobId);
+        PipelineStage pipelineStage = PipelineStage.valueOf(stage.toUpperCase());
+
+        JobStage jobStage = jobStageRepository.findByJobIdAndStage(jobId, pipelineStage)
+                .orElseGet(() -> {
+                    JobStage s = new JobStage();
+                    s.setJob(job);
+                    s.setStage(pipelineStage);
+                    s.setStatus(JobStageStatus.PENDING);
+                    return s;
+                });
+
+        LocalDateTime now = LocalDateTime.now();
+        long elapsed;
+
+        switch (type) {
+            case "start" -> {
+                jobStage.setStatus(JobStageStatus.ACTIVE);
+                jobStage.setStartedAt(now);
+                elapsed = 0;
+            }
+            case "end" -> {
+                jobStage.setStatus(JobStageStatus.COMPLETED);
+                jobStage.setEndedAt(now);
+                elapsed = jobStage.getStartedAt() != null
+                        ? Duration.between(jobStage.getStartedAt(), now).toMillis()
+                        : 0;
+            }
+            default -> { // "activity"
+                elapsed = jobStage.getStartedAt() != null
+                        ? Duration.between(jobStage.getStartedAt(), now).toMillis()
+                        : 0;
+            }
+        }
+
+        jobStageRepository.save(jobStage);
+
+        String json = String.format(
+                "{\"stage\":\"%s\",\"type\":\"%s\",\"message\":\"%s\",\"elapsed\":%d}",
+                stage, type, message.replace("\"", "\\\""), elapsed
+        );
+        sseService.emitStage(jobId, json);
+        log.debug("Job {} stage event: stage={}, type={}, elapsed={}ms", jobId, stage, type, elapsed);
     }
 
     @Transactional
