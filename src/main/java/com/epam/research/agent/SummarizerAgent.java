@@ -30,7 +30,7 @@ public class SummarizerAgent {
                 Raw Search Results: %s""".formatted(topic, clarificationContext, rawSearchResults);
 
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(Model.CLAUDE_SONNET_4_6)
+                .model(Model.CLAUDE_HAIKU_4_5)
                 .maxTokens(2048L)
                 .system(SYSTEM_PROMPT)
                 .addUserMessage(userMessage)
