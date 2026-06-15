@@ -26,7 +26,7 @@ public class ClarificationAgent {
         long start = System.currentTimeMillis();
 
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(Model.CLAUDE_SONNET_4_6)
+                .model(Model.CLAUDE_HAIKU_4_5)
                 .maxTokens(512L)
                 .system(SYSTEM_PROMPT)
                 .addUserMessage(topic)
