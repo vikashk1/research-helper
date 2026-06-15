@@ -30,6 +30,9 @@ class JobServiceTest {
     private JobLogRepository jobLogRepository;
 
     @Mock
+    private JobStageRepository jobStageRepository;
+
+    @Mock
     private ClarificationAgent clarificationAgent;
 
     @Mock
@@ -155,6 +158,7 @@ class JobServiceTest {
         jobService.restartJob(1L);
 
         verify(jobLogRepository).deleteAllByJobId(1L);
+        verify(jobStageRepository).deleteAllByJobId(1L);
     }
 
     @Test
@@ -176,6 +180,7 @@ class JobServiceTest {
         jobService.deleteJob(1L);
 
         verify(jobLogRepository).deleteAllByJobId(1L);
+        verify(jobStageRepository).deleteAllByJobId(1L);
         verify(jobRepository).delete(job);
     }
 
@@ -202,6 +207,8 @@ class JobServiceTest {
         assertThat(result).isEqualTo(2);
         verify(jobLogRepository).deleteAllByJobId(1L);
         verify(jobLogRepository).deleteAllByJobId(2L);
+        verify(jobStageRepository).deleteAllByJobId(1L);
+        verify(jobStageRepository).deleteAllByJobId(2L);
         verify(jobRepository).deleteAll(List.of(job1, job2));
     }
 
