@@ -51,6 +51,15 @@ public class JobService {
                 });
     }
 
+    public JobResponseDto getJobResponse(Long jobId) {
+        Job job = getJob(jobId);
+        List<JobStageDto> stageDtos = jobStageRepository.findAllByJobIdOrderByIdAsc(jobId)
+                .stream()
+                .map(JobStageDto::from)
+                .toList();
+        return JobResponseDto.from(job, stageDtos);
+    }
+
     public List<Job> getAllJobs() {
         List<Job> jobs = jobRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
         log.debug("Retrieved {} jobs", jobs.size());

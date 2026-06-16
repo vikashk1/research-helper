@@ -49,10 +49,11 @@ public class JobController {
         return jobService.getAllJobs();
     }
 
+    @Operation(summary = "Get a job by ID including its pipeline stages")
     @GetMapping("/{id}")
-    public Job getJob(@PathVariable Long id) {
+    public JobResponseDto getJob(@PathVariable Long id) {
         log.debug("GET /api/jobs/{}", id);
-        return jobService.getJob(id);
+        return jobService.getJobResponse(id);
     }
 
     @Operation(summary = "Delete a job and its associated logs by ID")
