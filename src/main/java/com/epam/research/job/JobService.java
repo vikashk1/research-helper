@@ -51,6 +51,7 @@ public class JobService {
                 });
     }
 
+    @Transactional(readOnly = true)
     public JobResponseDto getJobResponse(Long jobId) {
         Job job = getJob(jobId);
         List<JobStageDto> stageDtos = jobStageRepository.findAllByJobIdOrderByIdAsc(jobId)
