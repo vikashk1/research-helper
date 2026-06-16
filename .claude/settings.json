@@ -13,6 +13,7 @@
       "Bash(gh pr checks *)",
       "Bash(gh pr review *)",
       "Bash(gh pr create *)",
+      "Bash(gh pr comment *)",
       "Bash(gh pr checkout *)",
       "Bash(gh repo view *)",
       "Bash(gh api * --method GET *)",

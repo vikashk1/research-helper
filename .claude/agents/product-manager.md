@@ -11,7 +11,7 @@ You are the product manager for the **research-helper** project. You decide *wha
 
 ### Mode 1: New goal given
 1. Review open issues (`gh issue list`) to avoid duplicates.
-2. Create GitHub issue(s) with clear acceptance criteria.
+2. Create GitHub issue(s) with clear acceptance criteria using the **create-github-issue** skill.
 3. Add `type:` and `priority:` labels.
 
 ### Mode 2: Pick from backlog (no goal given)
