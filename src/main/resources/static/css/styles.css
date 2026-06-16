@@ -35,6 +35,63 @@
 }
 
 /* -----------------------------------------------------------------------
+ * Pipeline stage indicator
+ * ----------------------------------------------------------------------- */
+
+/* Spinner keyframe */
+@keyframes stage-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Active stage: icon becomes blue with a pulsing ring */
+.stage-item.stage-active .stage-icon {
+  background-color: #3b82f6; /* blue-500 */
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  animation: stage-ring-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes stage-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
+  50%       { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1); }
+}
+
+/* Active stage: label becomes bright */
+.stage-item.stage-active .stage-label {
+  color: #1e40af; /* blue-800 */
+}
+
+@media (prefers-color-scheme: dark) {
+  .stage-item.stage-active .stage-label {
+    color: #93c5fd; /* blue-300 */
+  }
+}
+
+/* Active stage: show spinner, hide number */
+.stage-item.stage-active .stage-num     { display: none; }
+.stage-item.stage-active .stage-check   { display: none; }
+.stage-item.stage-active .stage-spinner {
+  display: block !important;
+  animation: stage-spin 0.8s linear infinite;
+}
+
+/* Completed stage: icon becomes blue solid */
+.stage-item.stage-done .stage-icon {
+  background-color: #2563eb; /* blue-600 */
+  color: #ffffff;
+}
+
+/* Completed stage: show check, hide number and spinner */
+.stage-item.stage-done .stage-num     { display: none; }
+.stage-item.stage-done .stage-spinner { display: none !important; }
+.stage-item.stage-done .stage-check   { display: block !important; }
+
+/* Completed stage: connector line turns blue */
+.stage-item.stage-done + .stage-connector {
+  background-color: #2563eb;
+}
+
+/* -----------------------------------------------------------------------
  * Scrollbar styling for log panel
  * ----------------------------------------------------------------------- */
 #log-box::-webkit-scrollbar              { width: 6px; }

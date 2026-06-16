@@ -120,7 +120,73 @@
         <!-- STEP 3: Live Log Stream -->
         <div id="step-3" class="step-panel hidden">
           <h2 class="text-2xl font-bold mb-2">Running Research Pipeline</h2>
-          <p id="step3-topic-label" class="text-slate-500 dark:text-slate-400 mb-6"></p>
+          <p id="step3-topic-label" class="text-slate-500 dark:text-slate-400 mb-4"></p>
+
+          <!-- Pipeline stage progress indicator -->
+          <div id="pipeline-stages" class="mb-6 bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-4">
+            <div class="flex items-center gap-0">
+
+              <!-- SEARCH stage -->
+              <div id="stage-SEARCH" class="stage-item flex items-center gap-2 shrink-0">
+                <div class="stage-icon w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                  <span class="stage-num text-xs font-bold">1</span>
+                  <svg class="stage-spinner w-4 h-4 hidden" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  <svg class="stage-check w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col leading-none">
+                  <span class="stage-label text-sm font-medium text-slate-500 dark:text-slate-400">Search</span>
+                  <span class="stage-elapsed text-xs text-slate-400 dark:text-slate-500 hidden"></span>
+                </div>
+              </div>
+
+              <div class="stage-connector flex-1 h-px mx-3 bg-slate-300 dark:bg-slate-700"></div>
+
+              <!-- SUMMARIZE stage -->
+              <div id="stage-SUMMARIZE" class="stage-item flex items-center gap-2 shrink-0">
+                <div class="stage-icon w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                  <span class="stage-num text-xs font-bold">2</span>
+                  <svg class="stage-spinner w-4 h-4 hidden" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  <svg class="stage-check w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col leading-none">
+                  <span class="stage-label text-sm font-medium text-slate-500 dark:text-slate-400">Summarize</span>
+                  <span class="stage-elapsed text-xs text-slate-400 dark:text-slate-500 hidden"></span>
+                </div>
+              </div>
+
+              <div class="stage-connector flex-1 h-px mx-3 bg-slate-300 dark:bg-slate-700"></div>
+
+              <!-- FORMAT stage -->
+              <div id="stage-FORMAT" class="stage-item flex items-center gap-2 shrink-0">
+                <div class="stage-icon w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
+                  <span class="stage-num text-xs font-bold">3</span>
+                  <svg class="stage-spinner w-4 h-4 hidden" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  <svg class="stage-check w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+                <div class="flex flex-col leading-none">
+                  <span class="stage-label text-sm font-medium text-slate-500 dark:text-slate-400">Format</span>
+                  <span class="stage-elapsed text-xs text-slate-400 dark:text-slate-500 hidden"></span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          <!-- /Pipeline stage progress indicator -->
 
           <div class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden">
             <div class="border-b border-slate-300 dark:border-slate-700 px-4 py-2.5 flex items-center gap-2">
