@@ -11,8 +11,9 @@ let activeEventSource = null;
 // API response so that arriving SSE events for the same stage are silently dropped.
 const seenStages = new Set();
 
-// Tracks which accordion is currently open (only one open at a time during active run)
-// but completed stages are togglable independently.
+// Tracks which accordion panels are currently open. Multiple panels may be open
+// simultaneously — the active stage is auto-expanded by the stage event handlers,
+// and completed stages are freely togglable by the user.
 const accordionOpen = { SEARCH: false, SUMMARIZE: false, FORMAT: false };
 
 const STEPS = [
@@ -286,7 +287,8 @@ async function loadJob(jobId, topic, status) {
     statusText.textContent = 'Waiting to start...';
     // Open the first stage accordion and show a pending message
     setAccordionOpen('SEARCH', true);
-    appendLogLine(getStageLogBox('SEARCH'), 'Job is queued and waiting to start...');
+    const searchLog = getStageLogBox('SEARCH');
+    if (searchLog) appendLogLine(searchLog, 'Job is queued and waiting to start...');
     // No stages to hydrate for a PENDING job; the rail stays in its default state
   } else if (status === 'FAILED') {
     try {
