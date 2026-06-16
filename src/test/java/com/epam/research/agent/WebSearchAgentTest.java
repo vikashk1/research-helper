@@ -41,6 +41,7 @@ class WebSearchAgentTest {
     @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
+    @Mock private Usage usage;
     @Mock private JobService jobService;
 
     @InjectMocks
@@ -62,6 +63,9 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
     }
 
     @Test
@@ -129,6 +133,17 @@ class WebSearchAgentTest {
     }
 
     @Test
+    void should_recordTokenUsage_when_searchCompletes() {
+        stubApiCall("search result text");
+        when(usage.inputTokens()).thenReturn(1200L);
+        when(usage.outputTokens()).thenReturn(300L);
+
+        webSearchAgent.search(JOB_ID, "AI trends", "context");
+
+        verify(jobService).addTokenUsage(JOB_ID, 1200L, 300L);
+    }
+
+    @Test
     void should_returnEmpty_when_contentListIsEmpty() {
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
@@ -136,6 +151,9 @@ class WebSearchAgentTest {
         when(usage.inputTokens()).thenReturn(0L);
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = webSearchAgent.search(JOB_ID, "topic", "context");
 
@@ -151,6 +169,9 @@ class WebSearchAgentTest {
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = webSearchAgent.search(JOB_ID, "topic", "context");
 
@@ -172,6 +193,9 @@ class WebSearchAgentTest {
         when(textBlock.text()).thenReturn("First part.");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Second part.");
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = webSearchAgent.search(JOB_ID, "topic", "context");
 

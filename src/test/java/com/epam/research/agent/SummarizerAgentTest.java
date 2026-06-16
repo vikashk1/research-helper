@@ -39,6 +39,7 @@ class SummarizerAgentTest {
     @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
+    @Mock private Usage usage;
     @Mock private JobService jobService;
 
     @InjectMocks
@@ -60,6 +61,9 @@ class SummarizerAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
     }
 
     @Test
@@ -133,6 +137,9 @@ class SummarizerAgentTest {
         when(usage.inputTokens()).thenReturn(0L);
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
@@ -148,6 +155,9 @@ class SummarizerAgentTest {
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
@@ -169,6 +179,9 @@ class SummarizerAgentTest {
         when(textBlock.text()).thenReturn("Part one.");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Part two.");
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 

@@ -39,6 +39,7 @@ public class Job {
 
     private long totalInputTokens;
     private long totalOutputTokens;
+    private String modelId;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

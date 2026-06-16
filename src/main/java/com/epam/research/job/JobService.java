@@ -42,6 +42,7 @@ public class JobService {
         job.setTopic(topic);
         job.setClarificationAnswers(clarificationAnswers);
         job.setStatus(JobStatus.PENDING);
+        job.setModelId("claude-haiku-4-5");
         Job saved = jobRepository.save(job);
         log.info("Job {} created for topic: '{}'", saved.getId(), topic);
         return saved;
@@ -62,13 +63,19 @@ public class JobService {
                 .stream()
                 .map(JobStageDto::from)
                 .toList();
-        return JobResponseDto.from(job, stageDtos, modelId);
+        return JobResponseDto.from(job, stageDtos);
     }
 
     public List<Job> getAllJobs() {
         List<Job> jobs = jobRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
         log.debug("Retrieved {} jobs", jobs.size());
         return jobs;
+    }
+
+    @Transactional
+    public void addTokenUsage(Long jobId, long inputTokens, long outputTokens) {
+        jobRepository.addTokenUsage(jobId, inputTokens, outputTokens);
+        log.debug("Job {} token usage updated: +{} input, +{} output", jobId, inputTokens, outputTokens);
     }
 
     public void appendLog(Long jobId, String message) {

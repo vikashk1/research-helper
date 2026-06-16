@@ -14,7 +14,7 @@ const MODEL_PRICING = {
 
 /**
  * Compute estimated USD cost from token counts and model ID.
- * Returns null when the model is not in the pricing table.
+ * Returns null for costUsd when the model is not in the pricing table.
  * @param {number} inputTokens
  * @param {number} outputTokens
  * @param {string|null|undefined} modelId
@@ -30,6 +30,17 @@ function computeTokenCost(inputTokens, outputTokens, modelId) {
     ((inputTokens  || 0) / 1_000_000) * pricing.inputPerM +
     ((outputTokens || 0) / 1_000_000) * pricing.outputPerM;
   return { totalTokens, costUsd };
+}
+
+/**
+ * Format token count as e.g. "12.3k" or "1.2M".
+ * @param {number} n
+ * @returns {string}
+ */
+function formatTokenCount(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+  return String(n);
 }
 
 // ----------------------------------------------------------------
@@ -268,7 +279,10 @@ async function loadSidebar() {
 
 /**
  * Render (or hide) the aggregate token-usage footer in the sidebar.
- * @param {Array} jobs  — raw Job objects from GET /api/jobs
+ * Costs are computed per-job using each job's own modelId so that mixed-model
+ * pipelines are priced correctly. Jobs with an unknown modelId still contribute
+ * to the token total; cost is omitted only when no job has a priced model.
+ * @param {Array} jobs  — raw Job objects from GET /api/jobs (include modelId field)
  */
 function renderSidebarTokenFooter(jobs) {
   const footer = document.getElementById('sidebar-token-footer');
@@ -280,15 +294,35 @@ function renderSidebarTokenFooter(jobs) {
     return;
   }
 
-  const totalInput  = completedJobs.reduce((sum, j) => sum + (j.totalInputTokens  || 0), 0);
-  const totalOutput = completedJobs.reduce((sum, j) => sum + (j.totalOutputTokens || 0), 0);
-  const totalCost   = estimateCost(totalInput, totalOutput);
-  const totalTokens = totalInput + totalOutput;
+  let totalTokens   = 0;
+  let totalCostUsd  = 0;
+  let hasPricedCost = false;
+
+  completedJobs.forEach(j => {
+    const { totalTokens: jobTokens, costUsd } = computeTokenCost(
+      j.totalInputTokens  || 0,
+      j.totalOutputTokens || 0,
+      j.modelId
+    );
+    totalTokens += jobTokens;
+    if (costUsd !== null) {
+      totalCostUsd  += costUsd;
+      hasPricedCost  = true;
+    }
+  });
 
   const countEl = footer.querySelector('.sidebar-token-count');
   const costEl  = footer.querySelector('.sidebar-token-cost');
   if (countEl) countEl.textContent = `~${formatTokenCount(totalTokens)} tokens`;
-  if (costEl)  costEl.textContent  = `$${totalCost.toFixed(4)} est.`;
+  if (costEl) {
+    if (hasPricedCost) {
+      costEl.textContent = `$${totalCostUsd.toFixed(4)} est.`;
+      costEl.classList.remove('hidden');
+    } else {
+      costEl.textContent = '';
+      costEl.classList.add('hidden');
+    }
+  }
 
   footer.classList.remove('hidden');
 }

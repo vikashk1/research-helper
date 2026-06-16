@@ -266,6 +266,17 @@ class JobServiceTest {
         assertThat(result.getId()).isEqualTo(42L);
     }
 
+    @Test
+    void should_setModelId_when_jobCreated() {
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.createJob("quantum computing", Map.of());
+
+        ArgumentCaptor<Job> jobCaptor = ArgumentCaptor.forClass(Job.class);
+        verify(jobRepository).save(jobCaptor.capture());
+        assertThat(jobCaptor.getValue().getModelId()).isEqualTo("claude-haiku-4-5");
+    }
+
     // --- getJobResponse ---
 
     @Test

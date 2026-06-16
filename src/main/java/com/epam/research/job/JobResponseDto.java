@@ -18,7 +18,7 @@ public record JobResponseDto(
         long totalOutputTokens,
         String modelId
 ) {
-    static JobResponseDto from(Job job, List<JobStageDto> stages, String modelId) {
+    static JobResponseDto from(Job job, List<JobStageDto> stages) {
         return new JobResponseDto(
                 job.getId(),
                 job.getTopic(),
@@ -31,7 +31,7 @@ public record JobResponseDto(
                 stages,
                 job.getTotalInputTokens(),
                 job.getTotalOutputTokens(),
-                modelId
+                job.getModelId()
         );
     }
 }

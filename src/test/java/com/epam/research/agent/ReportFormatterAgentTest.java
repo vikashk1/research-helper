@@ -39,6 +39,7 @@ class ReportFormatterAgentTest {
     @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
+    @Mock private Usage usage;
     @Mock private JobService jobService;
 
     @InjectMocks
@@ -60,6 +61,9 @@ class ReportFormatterAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
     }
 
     @Test
@@ -133,6 +137,9 @@ class ReportFormatterAgentTest {
         when(usage.inputTokens()).thenReturn(0L);
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
@@ -148,6 +155,9 @@ class ReportFormatterAgentTest {
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
@@ -169,6 +179,9 @@ class ReportFormatterAgentTest {
         when(textBlock.text()).thenReturn("# Section One");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("## Section Two");
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
 
         String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
