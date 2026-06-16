@@ -439,17 +439,12 @@ function startLogStream(jobId) {
     handleStageEvent(event.data);
   });
 
+  // Plain (unnamed) SSE messages carry only job-level status signals
+  // (COMPLETED / FAILED).  All stage activity lines arrive as named 'stage'
+  // events handled above, so we must NOT route these messages to any stage
+  // log box — doing so was an unreliable heuristic that could produce duplicate
+  // or misrouted entries.
   es.onmessage = (event) => {
-    // Route plain-text messages to the currently active stage log, or FORMAT as fallback
-    const activeStage = STAGE_ORDER.find(s => {
-      const el = document.getElementById(`stage-${s}`);
-      return el && el.classList.contains('stage-active');
-    });
-    const targetLog = activeStage
-      ? getStageLogBox(activeStage)
-      : (getStageLogBox('FORMAT') || getStageLogBox('SEARCH'));
-    if (targetLog) appendLogLine(targetLog, event.data);
-
     if (event.data.includes('COMPLETED')) {
       closeStream();
       markStreamDone(true);
@@ -565,6 +560,10 @@ function initAccordionHandlers() {
 const STAGE_ORDER = ['SEARCH', 'SUMMARIZE', 'FORMAT'];
 
 function resetStageUI() {
+  // Reset accordion open state eagerly so stale toggle state cannot persist
+  // across job switches, even if the DOM elements are not yet available.
+  STAGE_ORDER.forEach(s => { accordionOpen[s] = false; });
+
   STAGE_ORDER.forEach(stageName => {
     const el = document.getElementById(`stage-${stageName}`);
     if (!el) return;

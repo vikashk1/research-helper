@@ -137,17 +137,10 @@
   color: var(--color-text-muted);
 }
 
-/* Scrollbar styling for per-stage log panels (mirrors the old #log-box rules) */
+/* Scrollbar styling for per-stage accordion log panels */
 .accordion-log::-webkit-scrollbar       { width: 6px; }
 .accordion-log::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
 .accordion-log::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
-
-/* -----------------------------------------------------------------------
- * Scrollbar styling for log panel (kept for backward compatibility)
- * ----------------------------------------------------------------------- */
-#log-box::-webkit-scrollbar              { width: 6px; }
-#log-box::-webkit-scrollbar-track        { background: var(--color-scrollbar-track); }
-#log-box::-webkit-scrollbar-thumb        { background: var(--color-scrollbar-thumb); border-radius: 3px; }
 
 /* -----------------------------------------------------------------------
  * Markdown report styling
