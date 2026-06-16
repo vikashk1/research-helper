@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,9 @@ public class JobService {
     private final ClarificationAgent clarificationAgent;
     private final SseService sseService;
     private final ObjectMapper objectMapper;
+
+    @Value("${anthropic.model:claude-haiku-4-5}")
+    private String modelId;
 
     public List<String> getClarificationQuestions(String topic) {
         return clarificationAgent.generateQuestions(topic);
@@ -58,13 +62,18 @@ public class JobService {
                 .stream()
                 .map(JobStageDto::from)
                 .toList();
-        return JobResponseDto.from(job, stageDtos);
+        return JobResponseDto.from(job, stageDtos, modelId);
     }
 
     public List<Job> getAllJobs() {
         List<Job> jobs = jobRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
         log.debug("Retrieved {} jobs", jobs.size());
         return jobs;
+    }
+
+    @Transactional
+    public void addTokenUsage(Long jobId, long inputTokens, long outputTokens) {
+        jobRepository.addTokenUsage(jobId, inputTokens, outputTokens);
     }
 
     public void appendLog(Long jobId, String message) {
@@ -198,6 +207,8 @@ public class JobService {
         job.setStatus(JobStatus.PENDING);
         job.setReport(null);
         job.setErrorMessage(null);
+        job.setTotalInputTokens(0);
+        job.setTotalOutputTokens(0);
         Job saved = jobRepository.save(job);
         log.info("Job {} restarted", jobId);
         return saved;

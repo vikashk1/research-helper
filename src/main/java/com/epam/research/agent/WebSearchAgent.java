@@ -1,6 +1,7 @@
 package com.epam.research.agent;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.WebSearchTool20250305;
@@ -41,7 +42,7 @@ public class WebSearchAgent {
                 .build();
 
         jobService.appendStageEvent(jobId, "SEARCH", "activity", "Executing web search...");
-        var response = anthropicClient.messages().create(params);
+        Message response = anthropicClient.messages().create(params);
         jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
         String result = response.content()
                 .stream()

@@ -15,9 +15,10 @@ public record JobResponseDto(
         LocalDateTime updatedAt,
         List<JobStageDto> stages,
         long totalInputTokens,
-        long totalOutputTokens
+        long totalOutputTokens,
+        String modelId
 ) {
-    static JobResponseDto from(Job job, List<JobStageDto> stages) {
+    static JobResponseDto from(Job job, List<JobStageDto> stages, String modelId) {
         return new JobResponseDto(
                 job.getId(),
                 job.getTopic(),
@@ -29,7 +30,8 @@ public record JobResponseDto(
                 job.getUpdatedAt(),
                 stages,
                 job.getTotalInputTokens(),
-                job.getTotalOutputTokens()
+                job.getTotalOutputTokens(),
+                modelId
         );
     }
 }

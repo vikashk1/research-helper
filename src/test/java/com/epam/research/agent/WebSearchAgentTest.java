@@ -28,6 +28,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.BeforeEach;
+
 @ExtendWith(MockitoExtension.class)
 class WebSearchAgentTest {
 
@@ -43,6 +45,13 @@ class WebSearchAgentTest {
 
     @InjectMocks
     private WebSearchAgent webSearchAgent;
+
+    @BeforeEach
+    void stubUsage() {
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(10L);
+        when(usage.outputTokens()).thenReturn(20L);
+    }
 
     private void stubApiCall(String responseText) {
         when(anthropicClient.messages()).thenReturn(messageService);

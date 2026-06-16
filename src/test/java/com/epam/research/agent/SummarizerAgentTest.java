@@ -9,6 +9,7 @@ import com.anthropic.models.messages.TextBlock;
 import com.anthropic.models.messages.Usage;
 import com.anthropic.services.blocking.MessageService;
 import com.epam.research.job.JobService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -42,6 +43,13 @@ class SummarizerAgentTest {
 
     @InjectMocks
     private SummarizerAgent summarizerAgent;
+
+    @BeforeEach
+    void stubUsage() {
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(10L);
+        when(usage.outputTokens()).thenReturn(20L);
+    }
 
     private void stubApiCall(String responseText) {
         when(anthropicClient.messages()).thenReturn(messageService);

@@ -1,6 +1,7 @@
 package com.epam.research.agent;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.epam.research.job.JobService;
@@ -41,7 +42,7 @@ public class SummarizerAgent {
                 .build();
 
         jobService.appendStageEvent(jobId, "SUMMARIZE", "activity", "Generating summary...");
-        var response = anthropicClient.messages().create(params);
+        Message response = anthropicClient.messages().create(params);
         jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
         String summary = response.content()
                 .stream()

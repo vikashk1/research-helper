@@ -321,43 +321,33 @@ class JobServiceTest {
     // --- addTokenUsage ---
 
     @Test
-    void should_accumulateInputAndOutputTokens_when_addTokenUsageCalled() {
+    void should_delegateToRepositoryBulkUpdate_when_addTokenUsageCalled() {
+        jobService.addTokenUsage(1L, 100L, 200L);
+
+        verify(jobRepository).addTokenUsage(1L, 100L, 200L);
+    }
+
+    @Test
+    void should_notCallFindById_when_addTokenUsageCalled() {
+        jobService.addTokenUsage(1L, 100L, 200L);
+
+        verify(jobRepository, never()).findById(any());
+    }
+
+    @Test
+    void should_resetTokenCounters_when_jobRestarted() {
         Job job = new Job();
         job.setId(1L);
-        job.setTotalInputTokens(100L);
-        job.setTotalOutputTokens(50L);
+        job.setStatus(JobStatus.FAILED);
+        job.setTotalInputTokens(500L);
+        job.setTotalOutputTokens(300L);
         when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
         when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        jobService.addTokenUsage(1L, 200L, 75L);
+        Job result = jobService.restartJob(1L);
 
-        ArgumentCaptor<Job> captor = ArgumentCaptor.forClass(Job.class);
-        verify(jobRepository).save(captor.capture());
-        assertThat(captor.getValue().getTotalInputTokens()).isEqualTo(300L);
-        assertThat(captor.getValue().getTotalOutputTokens()).isEqualTo(125L);
-    }
-
-    @Test
-    void should_startFromZero_when_addTokenUsageCalledOnNewJob() {
-        Job job = new Job();
-        job.setId(2L);
-        when(jobRepository.findById(2L)).thenReturn(Optional.of(job));
-        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        jobService.addTokenUsage(2L, 500L, 250L);
-
-        ArgumentCaptor<Job> captor = ArgumentCaptor.forClass(Job.class);
-        verify(jobRepository).save(captor.capture());
-        assertThat(captor.getValue().getTotalInputTokens()).isEqualTo(500L);
-        assertThat(captor.getValue().getTotalOutputTokens()).isEqualTo(250L);
-    }
-
-    @Test
-    void should_throwNotFoundException_when_jobNotFoundOnAddTokenUsage() {
-        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> jobService.addTokenUsage(99L, 100L, 50L))
-                .isInstanceOf(ResponseStatusException.class);
+        assertThat(result.getTotalInputTokens()).isEqualTo(0L);
+        assertThat(result.getTotalOutputTokens()).isEqualTo(0L);
     }
 
     // --- appendStageEvent ---

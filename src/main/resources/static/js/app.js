@@ -1,4 +1,38 @@
 // ----------------------------------------------------------------
+// Pricing table — keyed by server-supplied modelId.
+// Add rows here as new models are deployed; all values are USD per million tokens.
+// ----------------------------------------------------------------
+const MODEL_PRICING = {
+  'claude-haiku-4-5':          { inputPerM: 0.80,  outputPerM: 4.00  },
+  'claude-haiku-3-5':          { inputPerM: 0.80,  outputPerM: 4.00  },
+  'claude-sonnet-4-5':         { inputPerM: 3.00,  outputPerM: 15.00 },
+  'claude-sonnet-4':           { inputPerM: 3.00,  outputPerM: 15.00 },
+  'claude-sonnet-3-7':         { inputPerM: 3.00,  outputPerM: 15.00 },
+  'claude-opus-4':             { inputPerM: 15.00, outputPerM: 75.00 },
+  'claude-3-opus-20240229':    { inputPerM: 15.00, outputPerM: 75.00 },
+};
+
+/**
+ * Compute estimated USD cost from token counts and model ID.
+ * Returns null when the model is not in the pricing table.
+ * @param {number} inputTokens
+ * @param {number} outputTokens
+ * @param {string|null|undefined} modelId
+ * @returns {{ totalTokens: number, costUsd: number|null }}
+ */
+function computeTokenCost(inputTokens, outputTokens, modelId) {
+  const totalTokens = (inputTokens || 0) + (outputTokens || 0);
+  const pricing = modelId ? MODEL_PRICING[modelId] : null;
+  if (!pricing) {
+    return { totalTokens, costUsd: null };
+  }
+  const costUsd =
+    ((inputTokens  || 0) / 1_000_000) * pricing.inputPerM +
+    ((outputTokens || 0) / 1_000_000) * pricing.outputPerM;
+  return { totalTokens, costUsd };
+}
+
+// ----------------------------------------------------------------
 // State
 // ----------------------------------------------------------------
 let currentStep      = 1;
@@ -369,15 +403,22 @@ function formatTokenCount(n) {
 function renderReport(job) {
   document.getElementById('step4-topic-label').textContent = job.topic || '';
 
-  // Render cost badge when token data is available
+  // Render token usage / cost badge when token data is available
   const badgeEl = document.getElementById('step4-cost-badge');
   const inputTokens  = job.totalInputTokens  || 0;
   const outputTokens = job.totalOutputTokens || 0;
   if (badgeEl) {
     if (inputTokens > 0 || outputTokens > 0) {
-      const totalTokens = inputTokens + outputTokens;
-      const cost        = estimateCost(inputTokens, outputTokens);
-      badgeEl.textContent = `~${formatTokenCount(totalTokens)} tokens / $${cost.toFixed(4)}`;
+      const { totalTokens, costUsd } = computeTokenCost(inputTokens, outputTokens, job.modelId);
+      const tokensLabel = totalTokens >= 1000
+        ? `~${(totalTokens / 1000).toFixed(1)}k tokens`
+        : `${totalTokens} tokens`;
+      const costLabel = costUsd !== null
+        ? ` / $${costUsd.toFixed(4)}`
+        : '';
+      const modelLabel = job.modelId ? ` (${job.modelId})` : '';
+      badgeEl.textContent = tokensLabel + costLabel + modelLabel;
+      badgeEl.title = `Input: ${inputTokens.toLocaleString()} tokens, Output: ${outputTokens.toLocaleString()} tokens`;
       badgeEl.classList.remove('hidden');
     } else {
       badgeEl.classList.add('hidden');
