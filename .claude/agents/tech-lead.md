@@ -20,6 +20,8 @@ You are the tech lead for the **research-helper** project. You estimate work and
 
 ## Comment Format
 ```
+🏗️ **[Tech Lead]**
+
 ## Estimate: S|M|L|XL
 
 ## Approach

@@ -266,6 +266,58 @@ class JobServiceTest {
         assertThat(result.getId()).isEqualTo(42L);
     }
 
+    // --- getJobResponse ---
+
+    @Test
+    void should_returnJobResponseWithEmptyStages_when_noStagesExist() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTopic("AI trends");
+        job.setStatus(JobStatus.IN_PROGRESS);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findAllByJobIdOrderByIdAsc(1L)).thenReturn(List.of());
+
+        JobResponseDto result = jobService.getJobResponse(1L);
+
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.topic()).isEqualTo("AI trends");
+        assertThat(result.stages()).isEmpty();
+    }
+
+    @Test
+    void should_returnJobResponseWithMappedStages_when_stagesExist() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTopic("quantum");
+        job.setStatus(JobStatus.COMPLETED);
+
+        JobStage stage = new JobStage();
+        stage.setStage(PipelineStage.SEARCH);
+        stage.setStatus(JobStageStatus.COMPLETED);
+        stage.setStartedAt(java.time.LocalDateTime.of(2025, 1, 1, 10, 0));
+        stage.setEndedAt(java.time.LocalDateTime.of(2025, 1, 1, 10, 1));
+
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobStageRepository.findAllByJobIdOrderByIdAsc(1L)).thenReturn(List.of(stage));
+
+        JobResponseDto result = jobService.getJobResponse(1L);
+
+        assertThat(result.stages()).hasSize(1);
+        JobStageDto dto = result.stages().get(0);
+        assertThat(dto.stage()).isEqualTo(PipelineStage.SEARCH);
+        assertThat(dto.status()).isEqualTo(JobStageStatus.COMPLETED);
+        assertThat(dto.startedAt()).isEqualTo(java.time.LocalDateTime.of(2025, 1, 1, 10, 0));
+        assertThat(dto.endedAt()).isEqualTo(java.time.LocalDateTime.of(2025, 1, 1, 10, 1));
+    }
+
+    @Test
+    void should_throwNotFoundException_when_jobNotFoundOnGetJobResponse() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.getJobResponse(99L))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
     // --- appendStageEvent ---
 
     @Test

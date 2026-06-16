@@ -95,23 +95,39 @@ class JobControllerTest {
 
     @Test
     void should_returnJob_when_getByIdEndpointCalled() throws Exception {
-        Job job = new Job();
-        job.setId(1L);
-        job.setTopic("quantum computing");
-        job.setStatus(JobStatus.COMPLETED);
-        job.setReport("# Quantum Report");
+        JobResponseDto dto = new JobResponseDto(
+                1L, "quantum computing", null, JobStatus.COMPLETED,
+                "# Quantum Report", null, null, null, List.of());
 
-        when(jobService.getJob(1L)).thenReturn(job);
+        when(jobService.getJobResponse(1L)).thenReturn(dto);
 
         mockMvc.perform(get("/api/jobs/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.report").value("# Quantum Report"));
+                .andExpect(jsonPath("$.report").value("# Quantum Report"))
+                .andExpect(jsonPath("$.stages").isArray())
+                .andExpect(jsonPath("$.stages").isEmpty());
+    }
+
+    @Test
+    void should_returnStages_when_jobHasStages() throws Exception {
+        JobStageDto stageDto = new JobStageDto(PipelineStage.SEARCH, JobStageStatus.COMPLETED, null, null);
+        JobResponseDto dto = new JobResponseDto(
+                1L, "quantum computing", null, JobStatus.COMPLETED,
+                "# Report", null, null, null, List.of(stageDto));
+
+        when(jobService.getJobResponse(1L)).thenReturn(dto);
+
+        mockMvc.perform(get("/api/jobs/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stages").isArray())
+                .andExpect(jsonPath("$.stages[0].stage").value("SEARCH"))
+                .andExpect(jsonPath("$.stages[0].status").value("COMPLETED"));
     }
 
     @Test
     void should_return404_when_jobNotFound() throws Exception {
-        when(jobService.getJob(99L))
+        when(jobService.getJobResponse(99L))
                 .thenThrow(new ResponseStatusException(NOT_FOUND, "Job not found: 99"));
 
         mockMvc.perform(get("/api/jobs/99"))
