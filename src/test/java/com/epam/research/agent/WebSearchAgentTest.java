@@ -8,6 +8,7 @@ import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlock;
 import com.anthropic.models.messages.ToolUnion;
 import com.anthropic.services.blocking.MessageService;
+import com.epam.research.job.JobService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,11 +28,14 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class WebSearchAgentTest {
 
+    private static final Long JOB_ID = 1L;
+
     @Mock private AnthropicClient anthropicClient;
     @Mock private MessageService messageService;
     @Mock private Message message;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
+    @Mock private JobService jobService;
 
     @InjectMocks
     private WebSearchAgent webSearchAgent;
@@ -48,7 +52,7 @@ class WebSearchAgentTest {
     void should_returnSearchResults_when_validTopicAndContextProvided() {
         stubApiCall("Found relevant results about climate change research.");
 
-        String result = webSearchAgent.search("climate change", "focus on 2020-2025, academic sources");
+        String result = webSearchAgent.search(JOB_ID, "climate change", "focus on 2020-2025, academic sources");
 
         assertThat(result).isEqualTo("Found relevant results about climate change research.");
     }
@@ -58,7 +62,7 @@ class WebSearchAgentTest {
         stubApiCall("results");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        webSearchAgent.search("AI trends", "recent developments");
+        webSearchAgent.search(JOB_ID, "AI trends", "recent developments");
 
         verify(messageService).create(captor.capture());
         assertThat(captor.getValue().tools())
@@ -72,7 +76,7 @@ class WebSearchAgentTest {
         stubApiCall("results");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        webSearchAgent.search("quantum computing", "focus on hardware advances, target engineers");
+        webSearchAgent.search(JOB_ID, "quantum computing", "focus on hardware advances, target engineers");
 
         verify(messageService).create(captor.capture());
         String userMessage = captor.getValue().messages().get(0).content().asString();
@@ -86,7 +90,7 @@ class WebSearchAgentTest {
         stubApiCall("results");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        webSearchAgent.search("topic", "context");
+        webSearchAgent.search(JOB_ID, "topic", "context");
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
@@ -100,7 +104,7 @@ class WebSearchAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = webSearchAgent.search("topic", "context");
+        String result = webSearchAgent.search(JOB_ID, "topic", "context");
 
         assertThat(result).isEmpty();
     }
@@ -112,7 +116,7 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = webSearchAgent.search("topic", "context");
+        String result = webSearchAgent.search(JOB_ID, "topic", "context");
 
         assertThat(result).isEmpty();
     }
@@ -130,7 +134,7 @@ class WebSearchAgentTest {
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Second part.");
 
-        String result = webSearchAgent.search("topic", "context");
+        String result = webSearchAgent.search(JOB_ID, "topic", "context");
 
         assertThat(result).contains("First part.").contains("Second part.");
     }

@@ -7,6 +7,7 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlock;
 import com.anthropic.services.blocking.MessageService;
+import com.epam.research.job.JobService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -26,11 +27,14 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ReportFormatterAgentTest {
 
+    private static final Long JOB_ID = 1L;
+
     @Mock private AnthropicClient anthropicClient;
     @Mock private MessageService messageService;
     @Mock private Message message;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
+    @Mock private JobService jobService;
 
     @InjectMocks
     private ReportFormatterAgent reportFormatterAgent;
@@ -48,7 +52,7 @@ class ReportFormatterAgentTest {
         stubApiCall("# Climate Change Report\n\n## Key Findings\n...");
 
         String result = reportFormatterAgent.format(
-                "climate change", "focus on 2020-2025", "Summarized content...");
+                JOB_ID, "climate change", "focus on 2020-2025", "Summarized content...");
 
         assertThat(result).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
     }
@@ -58,7 +62,7 @@ class ReportFormatterAgentTest {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        reportFormatterAgent.format("quantum computing", "target engineers", "summarized content here");
+        reportFormatterAgent.format(JOB_ID, "quantum computing", "target engineers", "summarized content here");
 
         verify(messageService).create(captor.capture());
         String userMessage = captor.getValue().messages().get(0).content().asString();
@@ -73,7 +77,7 @@ class ReportFormatterAgentTest {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        reportFormatterAgent.format("topic", "context", "summary");
+        reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
         verify(messageService).create(captor.capture());
         assertThat(captor.getValue().tools())
@@ -85,7 +89,7 @@ class ReportFormatterAgentTest {
         stubApiCall("# Report");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        reportFormatterAgent.format("topic", "context", "summary");
+        reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
@@ -99,7 +103,7 @@ class ReportFormatterAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
         assertThat(result).isEmpty();
     }
@@ -111,7 +115,7 @@ class ReportFormatterAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
         assertThat(result).isEmpty();
     }
@@ -129,7 +133,7 @@ class ReportFormatterAgentTest {
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("## Section Two");
 
-        String result = reportFormatterAgent.format("topic", "context", "summary");
+        String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
         assertThat(result).contains("# Section One").contains("## Section Two");
     }
