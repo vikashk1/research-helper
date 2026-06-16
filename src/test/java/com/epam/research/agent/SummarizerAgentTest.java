@@ -58,8 +58,8 @@ class SummarizerAgentTest {
 
         assertThat(result).isEqualTo("Key findings: climate change is accelerating.");
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("start"), contains("climate change"));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("progress"), contains("Analyzing search results..."));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("progress"), contains("Generating summary..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("activity"), contains("Analyzing search results..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("activity"), contains("Generating summary..."));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("end"), contains("Summarization complete"));
     }
 

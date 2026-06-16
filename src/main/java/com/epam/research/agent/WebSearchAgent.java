@@ -26,7 +26,7 @@ public class WebSearchAgent {
         log.info("Starting web search for topic: '{}'", topic);
         long start = System.currentTimeMillis();
         jobService.appendStageEvent(jobId, "SEARCH", "start", "Starting web search for: " + topic);
-        jobService.appendStageEvent(jobId, "SEARCH", "progress", "Generating search queries for: " + topic);
+        jobService.appendStageEvent(jobId, "SEARCH", "activity", "Generating search queries for: " + topic);
 
         String userMessage = """
                 Topic: %s
@@ -40,7 +40,7 @@ public class WebSearchAgent {
                 .addUserMessage(userMessage)
                 .build();
 
-        jobService.appendStageEvent(jobId, "SEARCH", "progress", "Executing web search...");
+        jobService.appendStageEvent(jobId, "SEARCH", "activity", "Executing web search...");
         String result = anthropicClient.messages().create(params)
                 .content()
                 .stream()
@@ -48,8 +48,7 @@ public class WebSearchAgent {
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
 
-        int resultCount = result.isBlank() ? 0 : result.split("\n\n+").length;
-        jobService.appendStageEvent(jobId, "SEARCH", "progress", "Found " + resultCount + " results");
+        jobService.appendStageEvent(jobId, "SEARCH", "activity", "Web search results retrieved");
         log.info("Web search completed in {}ms, result length: {} chars", System.currentTimeMillis() - start, result.length());
         jobService.appendStageEvent(jobId, "SEARCH", "end", "Web search complete, " + result.length() + " chars");
         return result;

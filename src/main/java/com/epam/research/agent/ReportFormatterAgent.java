@@ -27,7 +27,7 @@ public class ReportFormatterAgent {
         log.info("Formatting report for topic: '{}', summary length: {} chars", topic, summarizedContent.length());
         long start = System.currentTimeMillis();
         jobService.appendStageEvent(jobId, "FORMAT", "start", "Starting report formatting for: " + topic);
-        jobService.appendStageEvent(jobId, "FORMAT", "progress", "Assembling report sections...");
+        jobService.appendStageEvent(jobId, "FORMAT", "activity", "Assembling report sections...");
 
         String userMessage = """
                 Topic: %s
@@ -48,7 +48,7 @@ public class ReportFormatterAgent {
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
 
-        jobService.appendStageEvent(jobId, "FORMAT", "progress", "Report formatting complete");
+        jobService.appendStageEvent(jobId, "FORMAT", "activity", "Report formatting complete");
         log.info("Report formatted in {}ms, report length: {} chars", System.currentTimeMillis() - start, report.length());
         jobService.appendStageEvent(jobId, "FORMAT", "end", "Report formatting complete, " + report.length() + " chars");
         return report;

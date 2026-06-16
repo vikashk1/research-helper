@@ -58,8 +58,8 @@ class ReportFormatterAgentTest {
 
         assertThat(result).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("start"), contains("climate change"));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("progress"), contains("Assembling report sections..."));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("progress"), contains("Report formatting complete"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("activity"), contains("Assembling report sections..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("activity"), contains("Report formatting complete"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("end"), contains("Report formatting complete"));
     }
 

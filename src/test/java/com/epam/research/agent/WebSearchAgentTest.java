@@ -58,9 +58,9 @@ class WebSearchAgentTest {
 
         assertThat(result).isEqualTo("Found relevant results about climate change research.");
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("start"), contains("climate change"));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("progress"), contains("Generating search queries for: climate change"));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("progress"), contains("Executing web search..."));
-        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("progress"), contains("Found "));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Generating search queries for: climate change"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Executing web search..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Web search results retrieved"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("end"), contains("Web search complete"));
     }
 

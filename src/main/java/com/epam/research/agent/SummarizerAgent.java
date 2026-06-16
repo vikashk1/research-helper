@@ -26,7 +26,7 @@ public class SummarizerAgent {
         log.info("Summarizing search results for topic: '{}', input length: {} chars", topic, rawSearchResults.length());
         long start = System.currentTimeMillis();
         jobService.appendStageEvent(jobId, "SUMMARIZE", "start", "Starting summarization for: " + topic);
-        jobService.appendStageEvent(jobId, "SUMMARIZE", "progress", "Analyzing search results...");
+        jobService.appendStageEvent(jobId, "SUMMARIZE", "activity", "Analyzing search results...");
 
         String userMessage = """
                 Topic: %s
@@ -40,7 +40,7 @@ public class SummarizerAgent {
                 .addUserMessage(userMessage)
                 .build();
 
-        jobService.appendStageEvent(jobId, "SUMMARIZE", "progress", "Generating summary...");
+        jobService.appendStageEvent(jobId, "SUMMARIZE", "activity", "Generating summary...");
         String summary = anthropicClient.messages().create(params)
                 .content()
                 .stream()
