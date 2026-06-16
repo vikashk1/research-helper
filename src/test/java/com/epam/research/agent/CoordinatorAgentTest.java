@@ -43,9 +43,9 @@ class CoordinatorAgentTest {
     }
 
     private void stubHappyPath() {
-        when(webSearchAgent.search(anyString(), anyString())).thenReturn("raw results");
-        when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+        when(webSearchAgent.search(eq(JOB_ID), anyString(), anyString())).thenReturn("raw results");
+        when(summarizerAgent.summarize(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("summary");
+        when(reportFormatterAgent.format(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("# Report");
     }
 
     @Test
@@ -71,27 +71,27 @@ class CoordinatorAgentTest {
 
     @Test
     void should_retryThreeTimes_and_markFailed_when_searchAlwaysFails() {
-        when(webSearchAgent.search(anyString(), anyString()))
+        when(webSearchAgent.search(eq(JOB_ID), anyString(), anyString()))
                 .thenThrow(new RuntimeException("search failed"));
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
-        verify(webSearchAgent, times(3)).search(anyString(), anyString());
+        verify(webSearchAgent, times(3)).search(eq(JOB_ID), anyString(), anyString());
         verify(jobService).markFailed(eq(JOB_ID), anyString());
         verify(sseService).complete(JOB_ID);
     }
 
     @Test
     void should_succeedAfterRetry_when_searchFailsOnFirstAttempt() {
-        when(webSearchAgent.search(anyString(), anyString()))
+        when(webSearchAgent.search(eq(JOB_ID), anyString(), anyString()))
                 .thenThrow(new RuntimeException("temporary"))
                 .thenReturn("raw results");
-        when(summarizerAgent.summarize(anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(anyString(), anyString(), anyString())).thenReturn("# Report");
+        when(summarizerAgent.summarize(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("summary");
+        when(reportFormatterAgent.format(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("# Report");
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
-        verify(webSearchAgent, times(2)).search(anyString(), anyString());
+        verify(webSearchAgent, times(2)).search(eq(JOB_ID), anyString(), anyString());
         verify(jobService).markCompleted(JOB_ID, "# Report");
     }
 
@@ -100,9 +100,9 @@ class CoordinatorAgentTest {
         stubHappyPath();
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
-        verify(webSearchAgent).search(eq(TOPIC), anyString());
-        verify(summarizerAgent).summarize(eq(TOPIC), anyString(), eq("raw results"));
-        verify(reportFormatterAgent).format(eq(TOPIC), anyString(), eq("summary"));
+        verify(webSearchAgent).search(eq(JOB_ID), eq(TOPIC), anyString());
+        verify(summarizerAgent).summarize(eq(JOB_ID), eq(TOPIC), anyString(), eq("raw results"));
+        verify(reportFormatterAgent).format(eq(JOB_ID), eq(TOPIC), anyString(), eq("summary"));
     }
 
     @Test
@@ -110,6 +110,6 @@ class CoordinatorAgentTest {
         stubHappyPath();
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 
-        verify(webSearchAgent).search(anyString(), contains("global"));
+        verify(webSearchAgent).search(eq(JOB_ID), anyString(), contains("global"));
     }
 }

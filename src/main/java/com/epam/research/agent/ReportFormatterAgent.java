@@ -3,6 +3,7 @@ package com.epam.research.agent;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
+import com.epam.research.job.JobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -20,10 +21,13 @@ public class ReportFormatterAgent {
             audience, and content — do not use a fixed template.""";
 
     private final AnthropicClient anthropicClient;
+    private final JobService jobService;
 
-    public String format(String topic, String clarificationContext, String summarizedContent) {
+    public String format(Long jobId, String topic, String clarificationContext, String summarizedContent) {
         log.info("Formatting report for topic: '{}', summary length: {} chars", topic, summarizedContent.length());
         long start = System.currentTimeMillis();
+        jobService.appendStageEvent(jobId, "FORMAT", "start", "Starting report formatting for: " + topic);
+        jobService.appendStageEvent(jobId, "FORMAT", "activity", "Assembling report sections...");
 
         String userMessage = """
                 Topic: %s
@@ -44,7 +48,9 @@ public class ReportFormatterAgent {
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
 
+        jobService.appendStageEvent(jobId, "FORMAT", "activity", "Report formatting complete");
         log.info("Report formatted in {}ms, report length: {} chars", System.currentTimeMillis() - start, report.length());
+        jobService.appendStageEvent(jobId, "FORMAT", "end", "Report formatting complete, " + report.length() + " chars");
         return report;
     }
 }

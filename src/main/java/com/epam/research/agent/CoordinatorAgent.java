@@ -52,13 +52,13 @@ public class CoordinatorAgent {
 
             log.debug("Clarification context built ({} Q&A pairs)", clarificationAnswers.size());
 
-            String rawResults = withRetry(() -> webSearchAgent.search(topic, context));
+            String rawResults = withRetry(() -> webSearchAgent.search(jobId, topic, context));
             jobService.appendLog(jobId, "Search complete");
 
-            String summary = withRetry(() -> summarizerAgent.summarize(topic, context, rawResults));
+            String summary = withRetry(() -> summarizerAgent.summarize(jobId, topic, context, rawResults));
             jobService.appendLog(jobId, "Summary complete");
 
-            String report = withRetry(() -> reportFormatterAgent.format(topic, context, summary));
+            String report = withRetry(() -> reportFormatterAgent.format(jobId, topic, context, summary));
 
             jobService.markCompleted(jobId, report);
             sseService.complete(jobId);

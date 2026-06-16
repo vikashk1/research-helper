@@ -7,6 +7,7 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlock;
 import com.anthropic.services.blocking.MessageService;
+import com.epam.research.job.JobService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +20,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,11 +29,14 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class SummarizerAgentTest {
 
+    private static final Long JOB_ID = 1L;
+
     @Mock private AnthropicClient anthropicClient;
     @Mock private MessageService messageService;
     @Mock private Message message;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
+    @Mock private JobService jobService;
 
     @InjectMocks
     private SummarizerAgent summarizerAgent;
@@ -48,9 +54,13 @@ class SummarizerAgentTest {
         stubApiCall("Key findings: climate change is accelerating.");
 
         String result = summarizerAgent.summarize(
-                "climate change", "focus on 2020-2025", "Raw search result data...");
+                JOB_ID, "climate change", "focus on 2020-2025", "Raw search result data...");
 
         assertThat(result).isEqualTo("Key findings: climate change is accelerating.");
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("start"), contains("climate change"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("activity"), contains("Analyzing search results..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("activity"), contains("Generating summary..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("end"), contains("Summarization complete"));
     }
 
     @Test
@@ -58,7 +68,7 @@ class SummarizerAgentTest {
         stubApiCall("summary");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        summarizerAgent.summarize("quantum computing", "target engineers", "raw results here");
+        summarizerAgent.summarize(JOB_ID, "quantum computing", "target engineers", "raw results here");
 
         verify(messageService).create(captor.capture());
         String userMessage = captor.getValue().messages().get(0).content().asString();
@@ -73,7 +83,7 @@ class SummarizerAgentTest {
         stubApiCall("summary");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        summarizerAgent.summarize("topic", "context", "raw results");
+        summarizerAgent.summarize(JOB_ID, "topic", "context", "raw results");
 
         verify(messageService).create(captor.capture());
         assertThat(captor.getValue().tools())
@@ -85,7 +95,7 @@ class SummarizerAgentTest {
         stubApiCall("summary");
         ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
 
-        summarizerAgent.summarize("topic", "context", "raw results");
+        summarizerAgent.summarize(JOB_ID, "topic", "context", "raw results");
 
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
@@ -99,7 +109,7 @@ class SummarizerAgentTest {
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
         when(message.content()).thenReturn(List.of());
 
-        String result = summarizerAgent.summarize("topic", "context", "results");
+        String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
         assertThat(result).isEmpty();
     }
@@ -111,7 +121,7 @@ class SummarizerAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
-        String result = summarizerAgent.summarize("topic", "context", "results");
+        String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
         assertThat(result).isEmpty();
     }
@@ -129,7 +139,7 @@ class SummarizerAgentTest {
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Part two.");
 
-        String result = summarizerAgent.summarize("topic", "context", "results");
+        String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
         assertThat(result).contains("Part one.").contains("Part two.");
     }
