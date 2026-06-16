@@ -92,11 +92,55 @@
 }
 
 /* -----------------------------------------------------------------------
- * Scrollbar styling for log panel
+ * Per-stage accordion panels
  * ----------------------------------------------------------------------- */
-#log-box::-webkit-scrollbar              { width: 6px; }
-#log-box::-webkit-scrollbar-track        { background: var(--color-scrollbar-track); }
-#log-box::-webkit-scrollbar-thumb        { background: var(--color-scrollbar-thumb); border-radius: 3px; }
+
+/* Collapsed state: body has zero height and hides overflow */
+.stage-accordion .accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms ease;
+}
+
+/* The inner wrapper needs min-height:0 so grid can collapse it */
+.stage-accordion .accordion-body > .accordion-log {
+  min-height: 0;
+  overflow: hidden;
+  max-height: 20rem; /* cap height so very long logs don't overflow the viewport */
+}
+
+/* Expanded state */
+.stage-accordion.accordion-open .accordion-body {
+  grid-template-rows: 1fr;
+}
+
+/* When open allow scroll on the log panel */
+.stage-accordion.accordion-open .accordion-body > .accordion-log {
+  overflow-y: auto;
+}
+
+/* Chevron rotates 180° when open */
+.accordion-chevron {
+  flex-shrink: 0;
+  transition: transform 220ms ease;
+}
+.accordion-chevron.accordion-chevron-open {
+  transform: rotate(180deg);
+}
+
+/* Accordion header hover feedback */
+.accordion-header {
+  cursor: pointer;
+  user-select: none;
+}
+.accordion-header:hover .accordion-chevron {
+  color: var(--color-text-muted);
+}
+
+/* Scrollbar styling for per-stage accordion log panels */
+.accordion-log::-webkit-scrollbar       { width: 6px; }
+.accordion-log::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
+.accordion-log::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
 
 /* -----------------------------------------------------------------------
  * Markdown report styling

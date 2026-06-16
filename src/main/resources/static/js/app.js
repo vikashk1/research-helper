@@ -11,6 +11,11 @@ let activeEventSource = null;
 // API response so that arriving SSE events for the same stage are silently dropped.
 const seenStages = new Set();
 
+// Tracks which accordion panels are currently open. Multiple panels may be open
+// simultaneously — the active stage is auto-expanded by the stage event handlers,
+// and completed stages are freely togglable by the user.
+const accordionOpen = { SEARCH: false, SUMMARIZE: false, FORMAT: false };
+
 const STEPS = [
   { label: 'Topic' },
   { label: 'Questions' },
@@ -256,12 +261,10 @@ async function loadJob(jobId, topic, status) {
     return;
   }
 
-  const logBox      = document.getElementById('log-box');
   const statusDot   = document.getElementById('log-status-dot');
   const statusText  = document.getElementById('log-status-text');
   const failedPanel = document.getElementById('step3-failed-panel');
 
-  logBox.innerHTML = '';
   failedPanel.classList.add('hidden');
   resetStageUI();
   document.getElementById('step3-topic-label').textContent = `Topic: ${topic}`;
@@ -282,7 +285,10 @@ async function loadJob(jobId, topic, status) {
   } else if (status === 'PENDING') {
     statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-slate-400 animate-pulse';
     statusText.textContent = 'Waiting to start...';
-    appendLogLine(logBox, 'Job is queued and waiting to start...');
+    // Open the first stage accordion and show a pending message
+    setAccordionOpen('SEARCH', true);
+    const searchLog = getStageLogBox('SEARCH');
+    if (searchLog) appendLogLine(searchLog, 'Job is queued and waiting to start...');
     // No stages to hydrate for a PENDING job; the rail stays in its default state
   } else if (status === 'FAILED') {
     try {
@@ -415,7 +421,6 @@ function startLogStream(jobId) {
     activeEventSource = null;
   }
 
-  const logBox      = document.getElementById('log-box');
   const statusDot   = document.getElementById('log-status-dot');
   const statusText  = document.getElementById('log-status-text');
   const failedPanel = document.getElementById('step3-failed-panel');
@@ -431,13 +436,17 @@ function startLogStream(jobId) {
   const es = new EventSource(`/api/jobs/${jobId}/stream`);
   activeEventSource = es;
 
-  // Named 'stage' event — drives the pipeline stage indicator
+  // Named 'stage' event — drives the pipeline stage indicator and accordion
   es.addEventListener('stage', (event) => {
     handleStageEvent(event.data);
   });
 
+  // Plain (unnamed) SSE messages carry only job-level status signals
+  // (COMPLETED / FAILED).  All stage activity lines arrive as named 'stage'
+  // events handled above, so we must NOT route these messages to any stage
+  // log box — doing so was an unreliable heuristic that could produce duplicate
+  // or misrouted entries.
   es.onmessage = (event) => {
-    appendLogLine(logBox, event.data);
     if (event.data.includes('COMPLETED')) {
       closeStream();
       markStreamDone(true);
@@ -492,11 +501,71 @@ function startLogStream(jobId) {
 }
 
 // ----------------------------------------------------------------
+// Accordion helpers
+// ----------------------------------------------------------------
+
+/**
+ * Returns the per-stage log container div, or null if the stage name is unknown.
+ */
+function getStageLogBox(stageName) {
+  return document.getElementById(`log-${stageName}`);
+}
+
+/**
+ * Open or close a stage accordion panel.
+ * @param {string} stageName  e.g. 'SEARCH'
+ * @param {boolean} open
+ */
+function setAccordionOpen(stageName, open) {
+  const panel = document.getElementById(`accordion-${stageName}`);
+  if (!panel) return;
+  accordionOpen[stageName] = open;
+  panel.classList.toggle('accordion-open', open);
+  const chevron = panel.querySelector('.accordion-chevron');
+  if (chevron) chevron.classList.toggle('accordion-chevron-open', open);
+}
+
+/**
+ * Update the "active" badge visibility on a stage accordion header.
+ * @param {string}  stageName
+ * @param {boolean} active
+ */
+function setAccordionActiveBadge(stageName, active) {
+  const target = document.getElementById(`accordion-${stageName}`);
+  if (!target) return;
+  const badge = target.querySelector('.accordion-stage-badge');
+  if (!badge) return;
+  if (active) {
+    badge.textContent = 'active';
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+/**
+ * Wire up accordion toggle click handlers (called once on init).
+ */
+function initAccordionHandlers() {
+  document.querySelectorAll('.accordion-header').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const stageName = btn.dataset.stage;
+      const isOpen = accordionOpen[stageName];
+      setAccordionOpen(stageName, !isOpen);
+    });
+  });
+}
+
+// ----------------------------------------------------------------
 // Pipeline stage indicator
 // ----------------------------------------------------------------
 const STAGE_ORDER = ['SEARCH', 'SUMMARIZE', 'FORMAT'];
 
 function resetStageUI() {
+  // Reset accordion open state eagerly so stale toggle state cannot persist
+  // across job switches, even if the DOM elements are not yet available.
+  STAGE_ORDER.forEach(s => { accordionOpen[s] = false; });
+
   STAGE_ORDER.forEach(stageName => {
     const el = document.getElementById(`stage-${stageName}`);
     if (!el) return;
@@ -515,16 +584,18 @@ function resetStageUI() {
     check.classList.add('hidden');
     elapsed.textContent = '';
     elapsed.classList.add('hidden');
+
+    // Clear the per-stage accordion log and close the panel
+    const stageLog = getStageLogBox(stageName);
+    if (stageLog) stageLog.innerHTML = '';
+    setAccordionOpen(stageName, false);
+    setAccordionActiveBadge(stageName, false);
   });
 
   // Reset connector lines
   document.querySelectorAll('#pipeline-stages .stage-connector').forEach(el => {
     el.className = 'stage-connector flex-1 h-px mx-3 bg-slate-300 dark:bg-slate-700';
   });
-
-  // Clear the activity log
-  const logBox = document.getElementById('log-box');
-  if (logBox) logBox.innerHTML = '';
 
   // Clear deduplication set so hydration works cleanly on the next job load
   seenStages.clear();
@@ -571,12 +642,29 @@ function hydrateStagesFromApi(stages) {
         }
       }
 
+      // Populate per-stage log from persisted log lines if provided
+      if (Array.isArray(stageDto.logLines)) {
+        const stageLog = getStageLogBox(stageName);
+        if (stageLog) {
+          stageDto.logLines.forEach(line => appendLogLine(stageLog, line));
+        }
+      }
+
+      // Open the accordion so the user can see the completed stage's logs
+      setAccordionOpen(stageName, true);
+      setAccordionActiveBadge(stageName, false);
+
       // Mark as seen so duplicate SSE 'end' events are dropped
       seenStages.add(stageName);
 
     } else if (status === 'ACTIVE') {
       el.classList.remove('stage-done');
       el.classList.add('stage-active');
+
+      // Auto-expand the active stage and show the badge
+      setAccordionOpen(stageName, true);
+      setAccordionActiveBadge(stageName, true);
+
       // Do NOT add to seenStages — SSE 'end' event should still fire for this stage
     }
     // PENDING: leave in default (unstyled) state — nothing to do
@@ -596,21 +684,26 @@ function handleStageEvent(data) {
   const el = document.getElementById(`stage-${stageName}`);
   if (!el) return;
 
-  const logBox = document.getElementById('log-box');
+  const stageLog = getStageLogBox(stageName);
 
   if (type === 'start') {
-    // Deactivate any previously active stage
+    // Deactivate any previously active stage — hide its badge but keep it open (togglable)
     STAGE_ORDER.forEach(s => {
       const prev = document.getElementById(`stage-${s}`);
       if (prev && prev.classList.contains('stage-active')) {
         prev.classList.remove('stage-active');
+        setAccordionActiveBadge(s, false);
       }
     });
     el.classList.remove('stage-done');
     el.classList.add('stage-active');
 
-    if (logBox && message) {
-      appendLogLine(logBox, `[${stageName}] ${message}`);
+    // Auto-expand this stage's accordion
+    setAccordionOpen(stageName, true);
+    setAccordionActiveBadge(stageName, true);
+
+    if (stageLog && message) {
+      appendLogLine(stageLog, message);
     }
 
   } else if (type === 'end') {
@@ -621,6 +714,9 @@ function handleStageEvent(data) {
     }
     el.classList.remove('stage-active');
     el.classList.add('stage-done');
+
+    // Remove the "active" badge — the panel stays open so the user can review logs
+    setAccordionActiveBadge(stageName, false);
 
     // Show elapsed time (convert ms to seconds with one decimal)
     const seconds = elapsed != null ? (elapsed / 1000).toFixed(1) : null;
@@ -639,14 +735,14 @@ function handleStageEvent(data) {
     // Record as seen so any late-arriving duplicate SSE events are ignored
     seenStages.add(stageName);
 
-    if (logBox && message) {
-      appendLogLine(logBox, `[${stageName}] ${message}`);
+    if (stageLog && message) {
+      appendLogLine(stageLog, message);
     }
 
   } else if (type === 'activity') {
-    // Append activity message to the log panel
-    if (logBox && message) {
-      appendLogLine(logBox, `[${stageName}] ${message}`);
+    // Append activity message to the correct stage's log panel
+    if (stageLog && message) {
+      appendLogLine(stageLog, message);
     }
   }
 }
@@ -670,7 +766,9 @@ async function fetchAndShowReport(jobId) {
     loadSidebar();
     renderReport(job);
   } catch (e) {
-    appendLogLine(document.getElementById('log-box'), '[ERROR] Failed to fetch final report: ' + e.message);
+    // Append the error to whichever stage log is currently open, or FORMAT as fallback
+    const fallbackLog = getStageLogBox('FORMAT') || getStageLogBox('SEARCH');
+    if (fallbackLog) appendLogLine(fallbackLog, '[ERROR] Failed to fetch final report: ' + e.message);
   }
 }
 
@@ -775,3 +873,4 @@ document.getElementById('clear-completed-btn').addEventListener('click', clearCo
 // ----------------------------------------------------------------
 renderStepIndicator();
 loadSidebar();
+initAccordionHandlers();

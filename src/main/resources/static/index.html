@@ -188,15 +188,67 @@
           </div>
           <!-- /Pipeline stage progress indicator -->
 
-          <div class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden">
-            <div class="border-b border-slate-300 dark:border-slate-700 px-4 py-2.5 flex items-center gap-2">
+          <!-- Pipeline status header -->
+          <div class="bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden mb-2">
+            <div class="px-4 py-2.5 flex items-center gap-2">
               <div id="log-status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></div>
               <span id="log-status-text" class="text-sm text-slate-600 dark:text-slate-300 font-medium">Pipeline running...</span>
             </div>
-            <div id="log-box"
-              class="h-96 overflow-y-auto bg-slate-200 dark:bg-slate-900 p-4 font-mono text-sm text-slate-700 dark:text-slate-300 space-y-0.5">
-            </div>
           </div>
+
+          <!-- Per-stage accordion panels -->
+          <div id="stage-accordions" class="space-y-2">
+
+            <!-- SEARCH accordion -->
+            <div id="accordion-SEARCH" class="stage-accordion bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden">
+              <button type="button" class="accordion-header w-full flex items-center justify-between px-4 py-2.5 text-left" data-stage="SEARCH">
+                <span class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">Search</span>
+                  <span class="accordion-stage-badge hidden text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">active</span>
+                </span>
+                <svg class="accordion-chevron w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div class="accordion-body">
+                <div id="log-SEARCH" class="accordion-log bg-slate-200 dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300 space-y-0.5"></div>
+              </div>
+            </div>
+
+            <!-- SUMMARIZE accordion -->
+            <div id="accordion-SUMMARIZE" class="stage-accordion bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden">
+              <button type="button" class="accordion-header w-full flex items-center justify-between px-4 py-2.5 text-left" data-stage="SUMMARIZE">
+                <span class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">Summarize</span>
+                  <span class="accordion-stage-badge hidden text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">active</span>
+                </span>
+                <svg class="accordion-chevron w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div class="accordion-body">
+                <div id="log-SUMMARIZE" class="accordion-log bg-slate-200 dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300 space-y-0.5"></div>
+              </div>
+            </div>
+
+            <!-- FORMAT accordion -->
+            <div id="accordion-FORMAT" class="stage-accordion bg-slate-100 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 rounded-xl overflow-hidden">
+              <button type="button" class="accordion-header w-full flex items-center justify-between px-4 py-2.5 text-left" data-stage="FORMAT">
+                <span class="flex items-center gap-2">
+                  <span class="text-sm font-semibold text-slate-600 dark:text-slate-300">Format</span>
+                  <span class="accordion-stage-badge hidden text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">active</span>
+                </span>
+                <svg class="accordion-chevron w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div class="accordion-body">
+                <div id="log-FORMAT" class="accordion-log bg-slate-200 dark:bg-slate-900 px-4 py-3 font-mono text-sm text-slate-700 dark:text-slate-300 space-y-0.5"></div>
+              </div>
+            </div>
+
+          </div>
+          <!-- /Per-stage accordion panels -->
 
           <div id="step3-failed-panel" class="hidden mt-5 bg-red-100 border border-red-300 dark:bg-red-900/40 dark:border-red-700 rounded-xl p-5">
             <p class="text-red-700 dark:text-red-300 font-semibold mb-1">Pipeline Failed</p>
