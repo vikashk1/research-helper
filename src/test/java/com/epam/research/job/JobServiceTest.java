@@ -321,17 +321,28 @@ class JobServiceTest {
     // --- addTokenUsage ---
 
     @Test
-    void should_delegateToRepositoryBulkUpdate_when_addTokenUsageCalled() {
+    void should_accumulateTokenCounts_when_addTokenUsageCalled() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTotalInputTokens(50L);
+        job.setTotalOutputTokens(20L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
         jobService.addTokenUsage(1L, 100L, 200L);
 
-        verify(jobRepository).addTokenUsage(1L, 100L, 200L);
+        assertThat(job.getTotalInputTokens()).isEqualTo(150L);
+        assertThat(job.getTotalOutputTokens()).isEqualTo(220L);
+        verify(jobRepository).save(job);
     }
 
     @Test
-    void should_notCallFindById_when_addTokenUsageCalled() {
-        jobService.addTokenUsage(1L, 100L, 200L);
+    void should_throw_when_addTokenUsage_jobNotFound() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
 
-        verify(jobRepository, never()).findById(any());
+        assertThatThrownBy(() -> jobService.addTokenUsage(99L, 10L, 10L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Job not found");
     }
 
     @Test

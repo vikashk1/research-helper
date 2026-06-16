@@ -71,11 +71,6 @@ public class JobService {
         return jobs;
     }
 
-    @Transactional
-    public void addTokenUsage(Long jobId, long inputTokens, long outputTokens) {
-        jobRepository.addTokenUsage(jobId, inputTokens, outputTokens);
-    }
-
     public void appendLog(Long jobId, String message) {
         Job job = getJob(jobId);
         JobLog jobLog = new JobLog();

@@ -43,9 +43,6 @@ public class Job {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private long totalInputTokens;
-    private long totalOutputTokens;
-
     @JsonIgnore
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")
