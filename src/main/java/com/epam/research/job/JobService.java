@@ -2,6 +2,8 @@ package com.epam.research.job;
 
 import com.epam.research.agent.ClarificationAgent;
 import com.epam.research.sse.SseService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +27,7 @@ public class JobService {
     private final JobStageRepository jobStageRepository;
     private final ClarificationAgent clarificationAgent;
     private final SseService sseService;
+    private final ObjectMapper objectMapper;
 
     public List<String> getClarificationQuestions(String topic) {
         return clarificationAgent.generateQuestions(topic);
@@ -83,6 +88,66 @@ public class JobService {
         job.setErrorMessage(reason);
         jobRepository.save(job);
         log.warn("Job {} status -> FAILED, reason: {}", jobId, reason);
+    }
+
+    @Transactional
+    public void appendStageEvent(Long jobId, String stage, String type, String message) {
+        Job job = getJob(jobId);
+        PipelineStage pipelineStage;
+        try {
+            pipelineStage = PipelineStage.valueOf(stage.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown stage: " + stage);
+        }
+
+        JobStage jobStage = jobStageRepository.findByJobIdAndStage(jobId, pipelineStage)
+                .orElseGet(() -> {
+                    JobStage s = new JobStage();
+                    s.setJob(job);
+                    s.setStage(pipelineStage);
+                    s.setStatus(JobStageStatus.PENDING);
+                    return s;
+                });
+
+        LocalDateTime now = LocalDateTime.now();
+        long elapsed;
+
+        switch (type) {
+            case "start" -> {
+                jobStage.setStatus(JobStageStatus.ACTIVE);
+                jobStage.setStartedAt(now);
+                elapsed = 0;
+            }
+            case "end" -> {
+                jobStage.setStatus(JobStageStatus.COMPLETED);
+                jobStage.setEndedAt(now);
+                elapsed = jobStage.getStartedAt() != null
+                        ? Duration.between(jobStage.getStartedAt(), now).toMillis()
+                        : 0;
+            }
+            case "activity" -> {
+                elapsed = jobStage.getStartedAt() != null
+                        ? Duration.between(jobStage.getStartedAt(), now).toMillis()
+                        : 0;
+            }
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown type: " + type);
+        }
+
+        jobStageRepository.save(jobStage);
+
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(Map.of(
+                    "stage", stage,
+                    "type", type,
+                    "message", message,
+                    "elapsed", elapsed
+            ));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize stage event", e);
+        }
+        sseService.emitStage(jobId, json);
+        log.debug("Job {} stage event: stage={}, type={}, elapsed={}ms", jobId, stage, type, elapsed);
     }
 
     @Transactional

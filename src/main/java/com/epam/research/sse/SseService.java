@@ -3,9 +3,11 @@ package com.epam.research.sse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.SseEventBuilder;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -24,16 +26,26 @@ public class SseService {
     }
 
     public void emit(Long jobId, String message) {
+        sendToEmitters(jobId, SseEmitter.event().data(message));
+    }
+
+    public void emitStage(Long jobId, String json) {
+        sendToEmitters(jobId, SseEmitter.event().name("stage").data(json));
+    }
+
+    private void sendToEmitters(Long jobId, SseEventBuilder event) {
         List<SseEmitter> jobEmitters = emitters.get(jobId);
         if (jobEmitters == null) {
             log.debug("No SSE clients for job {}, skipping emit", jobId);
             return;
         }
+        Set<SseEmitter.DataWithMediaType> data = event.build();
         for (SseEmitter emitter : jobEmitters) {
             try {
-                emitter.send(SseEmitter.event().data(message));
+                emitter.send(data);
             } catch (IOException e) {
-                log.debug("SSE emitter for job {} disconnected, skipping: {}", jobId, e.getMessage());
+                log.debug("SSE emitter for job {} disconnected, removing: {}", jobId, e.getMessage());
+                jobEmitters.remove(emitter);
             }
         }
     }
