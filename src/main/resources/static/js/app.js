@@ -482,8 +482,8 @@ function resetStageUI() {
     const check   = el.querySelector('.stage-check');
     const elapsed = el.querySelector('.stage-elapsed');
 
-    // Reset icon classes to defaults
-    icon.className = 'stage-icon w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400';
+    // Remove only state-driven classes; CSS base styles on .stage-icon handle the rest
+    icon.classList.remove('stage-icon-active', 'stage-icon-done');
     num.classList.remove('hidden');
     spinner.classList.add('hidden');
     check.classList.add('hidden');
@@ -527,6 +527,10 @@ function handleStageEvent(data) {
     el.classList.remove('stage-done');
     el.classList.add('stage-active');
 
+    if (logBox && message) {
+      appendLogLine(logBox, `[${stageName}] ${message}`);
+    }
+
   } else if (type === 'end') {
     el.classList.remove('stage-active');
     el.classList.add('stage-done');
@@ -545,16 +549,15 @@ function handleStageEvent(data) {
       labelEl.title = `Completed in ${seconds}s`;
     }
 
+    if (logBox && message) {
+      appendLogLine(logBox, `[${stageName}] ${message}`);
+    }
+
   } else if (type === 'activity') {
     // Append activity message to the log panel
     if (logBox && message) {
       appendLogLine(logBox, `[${stageName}] ${message}`);
     }
-  }
-
-  // Always append non-empty messages to the log
-  if (type !== 'activity' && message && logBox) {
-    appendLogLine(logBox, `[${stageName}] ${message}`);
   }
 }
 

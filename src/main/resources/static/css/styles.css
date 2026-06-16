@@ -71,7 +71,7 @@
 .stage-item.stage-active .stage-num     { display: none; }
 .stage-item.stage-active .stage-check   { display: none; }
 .stage-item.stage-active .stage-spinner {
-  display: block !important;
+  display: block;
   animation: stage-spin 0.8s linear infinite;
 }
 
@@ -83,8 +83,8 @@
 
 /* Completed stage: show check, hide number and spinner */
 .stage-item.stage-done .stage-num     { display: none; }
-.stage-item.stage-done .stage-spinner { display: none !important; }
-.stage-item.stage-done .stage-check   { display: block !important; }
+.stage-item.stage-done .stage-spinner { display: none; }
+.stage-item.stage-done .stage-check   { display: block; }
 
 /* Completed stage: connector line turns blue */
 .stage-item.stage-done + .stage-connector {
