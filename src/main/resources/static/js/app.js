@@ -7,6 +7,10 @@ let currentQuestions = [];
 let currentJobId     = null;
 let activeEventSource = null;
 
+// Tracks stage names (e.g. 'SEARCH') that have already been hydrated from the
+// API response so that arriving SSE events for the same stage are silently dropped.
+const seenStages = new Set();
+
 const STEPS = [
   { label: 'Topic' },
   { label: 'Questions' },
@@ -240,6 +244,11 @@ async function loadJob(jobId, topic, status) {
       const res = await fetch(`/api/jobs/${jobId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const job = await res.json();
+      // Populate the stage progress rail from persisted data before navigating
+      // to the report view.  resetStageUI + hydrateStagesFromApi keeps the set
+      // consistent even if a previous job's stages were loaded earlier.
+      resetStageUI();
+      hydrateStagesFromApi(job.stages);
       renderReport(job);
     } catch (e) {
       alert('Failed to load job report: ' + e.message);
@@ -254,20 +263,33 @@ async function loadJob(jobId, topic, status) {
 
   logBox.innerHTML = '';
   failedPanel.classList.add('hidden');
+  resetStageUI();
   document.getElementById('step3-topic-label').textContent = `Topic: ${topic}`;
   goToStep(3);
 
   if (status === 'IN_PROGRESS') {
+    // Hydrate past stages from the API before opening the SSE stream so the user
+    // sees already-completed stages immediately, without waiting for SSE events.
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const job = await res.json();
+      hydrateStagesFromApi(job.stages);
+    } catch (e) {
+      // Non-fatal: SSE will still drive the UI forward from the current stage
+    }
     startLogStream(jobId);
   } else if (status === 'PENDING') {
     statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-slate-400 animate-pulse';
     statusText.textContent = 'Waiting to start...';
     appendLogLine(logBox, 'Job is queued and waiting to start...');
+    // No stages to hydrate for a PENDING job; the rail stays in its default state
   } else if (status === 'FAILED') {
     try {
       const res = await fetch(`/api/jobs/${jobId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const job = await res.json();
+      hydrateStagesFromApi(job.stages);
       statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-red-400';
       statusText.textContent = 'Pipeline failed.';
       failedPanel.classList.remove('hidden');
@@ -371,6 +393,7 @@ document.getElementById('start-pipeline-btn').addEventListener('click', async ()
     const job = await res.json();
     currentJobId = job.id;
     loadSidebar();
+    resetStageUI();
     startLogStream(job.id);
     goToStep(3);
     document.getElementById('step3-topic-label').textContent = `Topic: ${currentTopic}`;
@@ -397,7 +420,10 @@ function startLogStream(jobId) {
   const statusText  = document.getElementById('log-status-text');
   const failedPanel = document.getElementById('step3-failed-panel');
 
-  resetStageUI();
+  // resetStageUI is intentionally NOT called here: callers that need a clean
+  // rail (new pipelines from step 2, try-again restart) must call it first.
+  // loadJob calls resetStageUI + hydrateStagesFromApi before startLogStream so
+  // that already-completed stages are visible before any SSE event arrives.
   failedPanel.classList.add('hidden');
   statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse';
   statusText.textContent = 'Pipeline running...';
@@ -499,6 +525,62 @@ function resetStageUI() {
   // Clear the activity log
   const logBox = document.getElementById('log-box');
   if (logBox) logBox.innerHTML = '';
+
+  // Clear deduplication set so hydration works cleanly on the next job load
+  seenStages.clear();
+}
+
+// ----------------------------------------------------------------
+// Stage hydration from persisted API data
+// ----------------------------------------------------------------
+// stages: array of JobStageDto from GET /api/jobs/{id}
+// Each entry: { stage: 'SEARCH'|'SUMMARIZE'|'FORMAT', status: 'PENDING'|'ACTIVE'|'COMPLETED'|'FAILED', startedAt, endedAt }
+function hydrateStagesFromApi(stages) {
+  if (!Array.isArray(stages) || stages.length === 0) return;
+
+  // Deactivate any currently-active stage first (belt-and-braces reset)
+  STAGE_ORDER.forEach(s => {
+    const el = document.getElementById(`stage-${s}`);
+    if (el) el.classList.remove('stage-active');
+  });
+
+  stages.forEach(stageDto => {
+    const stageName = String(stageDto.stage).toUpperCase();
+    const el = document.getElementById(`stage-${stageName}`);
+    if (!el) return;
+
+    const status = String(stageDto.status).toUpperCase();
+
+    if (status === 'COMPLETED' || status === 'FAILED') {
+      el.classList.remove('stage-active');
+      el.classList.add('stage-done');
+
+      // Compute elapsed time client-side from startedAt / endedAt
+      if (stageDto.startedAt && stageDto.endedAt) {
+        const start   = new Date(stageDto.startedAt).getTime();
+        const end     = new Date(stageDto.endedAt).getTime();
+        const seconds = ((end - start) / 1000).toFixed(1);
+        const elapsedEl = el.querySelector('.stage-elapsed');
+        if (elapsedEl) {
+          elapsedEl.textContent = `${seconds}s`;
+          elapsedEl.classList.remove('hidden');
+        }
+        const labelEl = el.querySelector('.stage-label');
+        if (labelEl) {
+          labelEl.title = `Completed in ${seconds}s`;
+        }
+      }
+
+      // Mark as seen so duplicate SSE 'end' events are dropped
+      seenStages.add(stageName);
+
+    } else if (status === 'ACTIVE') {
+      el.classList.remove('stage-done');
+      el.classList.add('stage-active');
+      // Do NOT add to seenStages — SSE 'end' event should still fire for this stage
+    }
+    // PENDING: leave in default (unstyled) state — nothing to do
+  });
 }
 
 function handleStageEvent(data) {
@@ -532,6 +614,11 @@ function handleStageEvent(data) {
     }
 
   } else if (type === 'end') {
+    // If this stage was already hydrated from the API response, drop the SSE event
+    // to avoid duplicate state transitions or elapsed-time flicker.
+    if (seenStages.has(stageName)) {
+      return;
+    }
     el.classList.remove('stage-active');
     el.classList.add('stage-done');
 
@@ -548,6 +635,9 @@ function handleStageEvent(data) {
     if (seconds !== null) {
       labelEl.title = `Completed in ${seconds}s`;
     }
+
+    // Record as seen so any late-arriving duplicate SSE events are ignored
+    seenStages.add(stageName);
 
     if (logBox && message) {
       appendLogLine(logBox, `[${stageName}] ${message}`);
@@ -589,7 +679,7 @@ document.getElementById('try-again-btn').addEventListener('click', async () => {
   try {
     const res = await fetch(`/api/jobs/${currentJobId}/restart`, { method: 'POST' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    document.getElementById('log-box').innerHTML = '';
+    resetStageUI();
     document.getElementById('step3-failed-panel').classList.add('hidden');
     loadSidebar();
     startLogStream(currentJobId);
