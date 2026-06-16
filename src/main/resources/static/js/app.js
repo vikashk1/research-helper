@@ -397,13 +397,18 @@ function startLogStream(jobId) {
   const statusText  = document.getElementById('log-status-text');
   const failedPanel = document.getElementById('step3-failed-panel');
 
-  logBox.innerHTML = '';
+  resetStageUI();
   failedPanel.classList.add('hidden');
   statusDot.className   = 'w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse';
   statusText.textContent = 'Pipeline running...';
 
   const es = new EventSource(`/api/jobs/${jobId}/stream`);
   activeEventSource = es;
+
+  // Named 'stage' event — drives the pipeline stage indicator
+  es.addEventListener('stage', (event) => {
+    handleStageEvent(event.data);
+  });
 
   es.onmessage = (event) => {
     appendLogLine(logBox, event.data);
@@ -456,6 +461,102 @@ function startLogStream(jobId) {
       statusText.textContent = 'Pipeline failed.';
       failedPanel.classList.remove('hidden');
       document.getElementById('step3-error-msg').textContent = errMsg || 'An error occurred.';
+    }
+  }
+}
+
+// ----------------------------------------------------------------
+// Pipeline stage indicator
+// ----------------------------------------------------------------
+const STAGE_ORDER = ['SEARCH', 'SUMMARIZE', 'FORMAT'];
+
+function resetStageUI() {
+  STAGE_ORDER.forEach(stageName => {
+    const el = document.getElementById(`stage-${stageName}`);
+    if (!el) return;
+    el.classList.remove('stage-active', 'stage-done');
+
+    const icon    = el.querySelector('.stage-icon');
+    const num     = el.querySelector('.stage-num');
+    const spinner = el.querySelector('.stage-spinner');
+    const check   = el.querySelector('.stage-check');
+    const elapsed = el.querySelector('.stage-elapsed');
+
+    // Remove only state-driven classes; CSS base styles on .stage-icon handle the rest
+    icon.classList.remove('stage-icon-active', 'stage-icon-done');
+    num.classList.remove('hidden');
+    spinner.classList.add('hidden');
+    check.classList.add('hidden');
+    elapsed.textContent = '';
+    elapsed.classList.add('hidden');
+  });
+
+  // Reset connector lines
+  document.querySelectorAll('#pipeline-stages .stage-connector').forEach(el => {
+    el.className = 'stage-connector flex-1 h-px mx-3 bg-slate-300 dark:bg-slate-700';
+  });
+
+  // Clear the activity log
+  const logBox = document.getElementById('log-box');
+  if (logBox) logBox.innerHTML = '';
+}
+
+function handleStageEvent(data) {
+  let event;
+  try {
+    event = JSON.parse(data);
+  } catch (e) {
+    return;
+  }
+
+  const { stage, type, message, elapsed } = event;
+  const stageName = String(stage).toUpperCase();
+  const el = document.getElementById(`stage-${stageName}`);
+  if (!el) return;
+
+  const logBox = document.getElementById('log-box');
+
+  if (type === 'start') {
+    // Deactivate any previously active stage
+    STAGE_ORDER.forEach(s => {
+      const prev = document.getElementById(`stage-${s}`);
+      if (prev && prev.classList.contains('stage-active')) {
+        prev.classList.remove('stage-active');
+      }
+    });
+    el.classList.remove('stage-done');
+    el.classList.add('stage-active');
+
+    if (logBox && message) {
+      appendLogLine(logBox, `[${stageName}] ${message}`);
+    }
+
+  } else if (type === 'end') {
+    el.classList.remove('stage-active');
+    el.classList.add('stage-done');
+
+    // Show elapsed time (convert ms to seconds with one decimal)
+    const seconds = elapsed != null ? (elapsed / 1000).toFixed(1) : null;
+    const elapsedEl = el.querySelector('.stage-elapsed');
+    if (seconds !== null) {
+      elapsedEl.textContent = `${seconds}s`;
+      elapsedEl.classList.remove('hidden');
+    }
+
+    // Also update the label to include elapsed for screen-reader / tooltip clarity
+    const labelEl = el.querySelector('.stage-label');
+    if (seconds !== null) {
+      labelEl.title = `Completed in ${seconds}s`;
+    }
+
+    if (logBox && message) {
+      appendLogLine(logBox, `[${stageName}] ${message}`);
+    }
+
+  } else if (type === 'activity') {
+    // Append activity message to the log panel
+    if (logBox && message) {
+      appendLogLine(logBox, `[${stageName}] ${message}`);
     }
   }
 }
@@ -515,9 +616,9 @@ function resetWizard() {
   currentJobId     = null;
   document.getElementById('topic-input').value = '';
   document.getElementById('questions-container').innerHTML = '';
-  document.getElementById('log-box').innerHTML = '';
   document.getElementById('report-content').innerHTML = '';
   document.getElementById('step3-failed-panel').classList.add('hidden');
+  resetStageUI();
   goToStep(1);
 }
 
