@@ -143,6 +143,37 @@
 .accordion-log::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
 
 /* -----------------------------------------------------------------------
+ * Cost badge — shown below the topic label on the Step 4 report view
+ * ----------------------------------------------------------------------- */
+.cost-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  background-color: #dcfce7; /* green-100 */
+  color: #166534;             /* green-800 */
+  border: 1px solid #bbf7d0; /* green-200 */
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cost-badge {
+    background-color: rgba(6, 78, 59, 0.35); /* emerald-900/35 */
+    color: #6ee7b7;                           /* emerald-300   */
+    border-color: rgba(52, 211, 153, 0.25);   /* emerald-400/25 */
+  }
+}
+
+/* -----------------------------------------------------------------------
+ * Sidebar aggregate token-usage footer
+ * ----------------------------------------------------------------------- */
+.sidebar-token-footer {
+  background-color: var(--color-surface);
+}
+
+/* -----------------------------------------------------------------------
  * Markdown report styling
  * ----------------------------------------------------------------------- */
 #report-content h1 { font-size: 1.75rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }

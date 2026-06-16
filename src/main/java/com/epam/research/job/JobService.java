@@ -161,6 +161,15 @@ public class JobService {
     }
 
     @Transactional
+    public void addTokenUsage(Long jobId, long inputTokens, long outputTokens) {
+        Job job = getJob(jobId);
+        job.setTotalInputTokens(job.getTotalInputTokens() + inputTokens);
+        job.setTotalOutputTokens(job.getTotalOutputTokens() + outputTokens);
+        jobRepository.save(job);
+        log.debug("Job {} token usage updated: +{} input, +{} output tokens", jobId, inputTokens, outputTokens);
+    }
+
+    @Transactional
     public void deleteJob(Long jobId) {
         Job job = getJob(jobId);
         jobLogRepository.deleteAllByJobId(jobId);

@@ -7,6 +7,7 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.anthropic.models.messages.TextBlock;
 import com.anthropic.models.messages.ToolUnion;
+import com.anthropic.models.messages.Usage;
 import com.anthropic.services.blocking.MessageService;
 import com.epam.research.job.JobService;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ class WebSearchAgentTest {
     @Mock private AnthropicClient anthropicClient;
     @Mock private MessageService messageService;
     @Mock private Message message;
+    @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
     @Mock private JobService jobService;
@@ -45,6 +47,9 @@ class WebSearchAgentTest {
     private void stubApiCall(String responseText) {
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
@@ -62,6 +67,15 @@ class WebSearchAgentTest {
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Executing web search..."));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Web search results retrieved"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("end"), contains("Web search complete"));
+    }
+
+    @Test
+    void should_callAddTokenUsage_when_searchCompletes() {
+        stubApiCall("results");
+
+        webSearchAgent.search(JOB_ID, "topic", "context");
+
+        verify(jobService).addTokenUsage(JOB_ID, 100L, 50L);
     }
 
     @Test
@@ -109,6 +123,9 @@ class WebSearchAgentTest {
     void should_returnEmpty_when_contentListIsEmpty() {
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(0L);
+        when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
 
         String result = webSearchAgent.search(JOB_ID, "topic", "context");
@@ -120,6 +137,9 @@ class WebSearchAgentTest {
     void should_skipNonTextBlocks_when_contentBlockHasNoText() {
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(0L);
+        when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
 
@@ -135,6 +155,9 @@ class WebSearchAgentTest {
 
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class))).thenReturn(message);
+        when(message.usage()).thenReturn(usage);
+        when(usage.inputTokens()).thenReturn(100L);
+        when(usage.outputTokens()).thenReturn(50L);
         when(message.content()).thenReturn(List.of(contentBlock, secondBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn("First part.");

@@ -164,6 +164,9 @@ async function loadSidebar() {
     const hasCompleted = jobs.some(j => j.status === 'COMPLETED');
     clearBtn.classList.toggle('hidden', !hasCompleted);
 
+    // Aggregate token usage across all jobs for the sidebar footer
+    renderSidebarTokenFooter(jobs);
+
     if (jobs.length === 0) {
       list.innerHTML = '<p class="text-slate-400 dark:text-slate-500 text-sm px-2 py-4 text-center">No jobs yet.</p>';
       return;
@@ -225,7 +228,35 @@ async function loadSidebar() {
     });
   } catch (e) {
     list.innerHTML = `<p class="text-red-600 dark:text-red-400 text-sm px-2 py-4 text-center">Failed to load jobs</p>`;
+    renderSidebarTokenFooter([]);
   }
+}
+
+/**
+ * Render (or hide) the aggregate token-usage footer in the sidebar.
+ * @param {Array} jobs  — raw Job objects from GET /api/jobs
+ */
+function renderSidebarTokenFooter(jobs) {
+  const footer = document.getElementById('sidebar-token-footer');
+  if (!footer) return;
+
+  const completedJobs = jobs.filter(j => j.status === 'COMPLETED');
+  if (completedJobs.length === 0) {
+    footer.classList.add('hidden');
+    return;
+  }
+
+  const totalInput  = completedJobs.reduce((sum, j) => sum + (j.totalInputTokens  || 0), 0);
+  const totalOutput = completedJobs.reduce((sum, j) => sum + (j.totalOutputTokens || 0), 0);
+  const totalCost   = estimateCost(totalInput, totalOutput);
+  const totalTokens = totalInput + totalOutput;
+
+  const countEl = footer.querySelector('.sidebar-token-count');
+  const costEl  = footer.querySelector('.sidebar-token-cost');
+  if (countEl) countEl.textContent = `~${formatTokenCount(totalTokens)} tokens`;
+  if (costEl)  costEl.textContent  = `$${totalCost.toFixed(4)} est.`;
+
+  footer.classList.remove('hidden');
 }
 
 function escapeHtml(str) {
@@ -306,8 +337,53 @@ async function loadJob(jobId, topic, status) {
   }
 }
 
+// ----------------------------------------------------------------
+// Token / cost helpers
+// ----------------------------------------------------------------
+// claude-haiku-4-5 pricing (USD per million tokens)
+const HAIKU_INPUT_PRICE_PER_M  = 0.80;
+const HAIKU_OUTPUT_PRICE_PER_M = 4.00;
+
+/**
+ * Compute estimated USD cost from raw token counts.
+ * @param {number} inputTokens
+ * @param {number} outputTokens
+ * @returns {number} cost in USD
+ */
+function estimateCost(inputTokens, outputTokens) {
+  return (inputTokens  / 1_000_000) * HAIKU_INPUT_PRICE_PER_M
+       + (outputTokens / 1_000_000) * HAIKU_OUTPUT_PRICE_PER_M;
+}
+
+/**
+ * Format token count as e.g. "12.3k" or "1.2M".
+ * @param {number} n
+ * @returns {string}
+ */
+function formatTokenCount(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+  return String(n);
+}
+
 function renderReport(job) {
   document.getElementById('step4-topic-label').textContent = job.topic || '';
+
+  // Render cost badge when token data is available
+  const badgeEl = document.getElementById('step4-cost-badge');
+  const inputTokens  = job.totalInputTokens  || 0;
+  const outputTokens = job.totalOutputTokens || 0;
+  if (badgeEl) {
+    if (inputTokens > 0 || outputTokens > 0) {
+      const totalTokens = inputTokens + outputTokens;
+      const cost        = estimateCost(inputTokens, outputTokens);
+      badgeEl.textContent = `~${formatTokenCount(totalTokens)} tokens / $${cost.toFixed(4)}`;
+      badgeEl.classList.remove('hidden');
+    } else {
+      badgeEl.classList.add('hidden');
+    }
+  }
+
   const reportEl = document.getElementById('report-content');
   reportEl.innerHTML = job.report
     ? marked.parse(job.report)

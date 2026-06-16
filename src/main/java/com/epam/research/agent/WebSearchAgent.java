@@ -41,8 +41,9 @@ public class WebSearchAgent {
                 .build();
 
         jobService.appendStageEvent(jobId, "SEARCH", "activity", "Executing web search...");
-        String result = anthropicClient.messages().create(params)
-                .content()
+        var response = anthropicClient.messages().create(params);
+        jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
+        String result = response.content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())

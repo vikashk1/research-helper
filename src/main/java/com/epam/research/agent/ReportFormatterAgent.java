@@ -41,8 +41,9 @@ public class ReportFormatterAgent {
                 .addUserMessage(userMessage)
                 .build();
 
-        String report = anthropicClient.messages().create(params)
-                .content()
+        var response = anthropicClient.messages().create(params);
+        jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
+        String report = response.content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())

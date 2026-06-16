@@ -41,8 +41,9 @@ public class SummarizerAgent {
                 .build();
 
         jobService.appendStageEvent(jobId, "SUMMARIZE", "activity", "Generating summary...");
-        String summary = anthropicClient.messages().create(params)
-                .content()
+        var response = anthropicClient.messages().create(params);
+        jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
+        String summary = response.content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())

@@ -13,7 +13,9 @@ public record JobResponseDto(
         String errorMessage,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        List<JobStageDto> stages
+        List<JobStageDto> stages,
+        long totalInputTokens,
+        long totalOutputTokens
 ) {
     static JobResponseDto from(Job job, List<JobStageDto> stages) {
         return new JobResponseDto(
@@ -25,7 +27,9 @@ public record JobResponseDto(
                 job.getErrorMessage(),
                 job.getCreatedAt(),
                 job.getUpdatedAt(),
-                stages
+                stages,
+                job.getTotalInputTokens(),
+                job.getTotalOutputTokens()
         );
     }
 }
