@@ -20,6 +20,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,6 +57,10 @@ class SummarizerAgentTest {
                 JOB_ID, "climate change", "focus on 2020-2025", "Raw search result data...");
 
         assertThat(result).isEqualTo("Key findings: climate change is accelerating.");
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("start"), contains("climate change"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("progress"), contains("Analyzing search results..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("progress"), contains("Generating summary..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("end"), contains("Summarization complete"));
     }
 
     @Test

@@ -20,6 +20,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,6 +57,10 @@ class ReportFormatterAgentTest {
                 JOB_ID, "climate change", "focus on 2020-2025", "Summarized content...");
 
         assertThat(result).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("start"), contains("climate change"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("progress"), contains("Assembling report sections..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("progress"), contains("Report formatting complete"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("end"), contains("Report formatting complete"));
     }
 
     @Test

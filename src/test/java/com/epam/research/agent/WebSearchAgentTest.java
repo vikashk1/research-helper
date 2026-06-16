@@ -21,6 +21,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -55,6 +57,11 @@ class WebSearchAgentTest {
         String result = webSearchAgent.search(JOB_ID, "climate change", "focus on 2020-2025, academic sources");
 
         assertThat(result).isEqualTo("Found relevant results about climate change research.");
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("start"), contains("climate change"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("progress"), contains("Generating search queries for: climate change"));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("progress"), contains("Executing web search..."));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("progress"), contains("Found "));
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("end"), contains("Web search complete"));
     }
 
     @Test
