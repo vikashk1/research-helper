@@ -1,7 +1,7 @@
 ---
 name: springboot-expert
 description: Spring Boot expert for this project. Use for implementing agent TODOs, JPA/MVC/SSE issues, tests, config, and any Java backend work.
-model: sonnet
+model: haiku
 color: green
 ---
 

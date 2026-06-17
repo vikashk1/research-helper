@@ -1,7 +1,7 @@
 ---
 name: frontend-expert
 description: Frontend expert for this project. Use for implementing index.html, SSE log streaming UI, Markdown report rendering, and any HTML/CSS/JS work.
-model: sonnet
+model: haiku
 color: blue
 ---
 
