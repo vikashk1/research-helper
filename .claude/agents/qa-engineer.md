@@ -15,7 +15,7 @@ You are the QA engineer for the **research-helper** project. You verify that imp
 ## Process
 1. Read the linked issue's acceptance criteria.
 2. Read the PR diff to understand what was implemented.
-3. Run `mvn test -q` — all must pass.
+3. For Java changes: Run `mvn test -q` — all must pass.
 4. For UI changes: navigate to the app, verify the feature works visually.
 5. Check edge cases: empty inputs, error states, concurrent access.
 6. Post verdict on the PR.

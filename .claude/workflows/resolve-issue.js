@@ -27,6 +27,7 @@ const ISSUE_SCHEMA = {
     needs_java: { type: 'boolean' },
     needs_ui:   { type: 'boolean' },
     summary:    { type: 'string' },
+    assessment: { type: 'string' }
   },
   required: ['number', 'title', 'body', 'ac', 'needs_java', 'needs_ui', 'summary'],
 }
@@ -103,14 +104,15 @@ Read the body AND all comments. Extract:
 - ac: acceptance criteria as a string array
 - needs_java: true if any Java/Spring/backend changes are needed
 - needs_ui: true if any HTML/CSS/JS/frontend changes are needed
-- summary: 2-3 sentences on what must be done`,
+- summary: concise description of what must be done
+- assessment: if a comment was added for assessment, concisely summarize it.`,
   { label: 'understand', phase: 'Understand', schema: ISSUE_SCHEMA }
 )
 
 if (!issue) throw new Error(`Could not fetch issue #${issueNumber}`)
 log(`#${issue.number}: ${issue.title}`)
 log(`Java: ${issue.needs_java} | UI: ${issue.needs_ui}`)
-
+log(`Assessment: ${issue.assessment}`)
 // ─── Phase 2: Branch ───────────────────────────────────────────────────────
 phase('Branch')
 
