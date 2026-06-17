@@ -1,6 +1,7 @@
 package com.epam.research.agent;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.epam.research.job.JobService;
@@ -22,7 +23,7 @@ public class SummarizerAgent {
     private final AnthropicClient anthropicClient;
     private final JobService jobService;
 
-    public String summarize(Long jobId, String topic, String clarificationContext, String rawSearchResults) {
+    public AgentResult summarize(Long jobId, String topic, String clarificationContext, String rawSearchResults) {
         log.info("Summarizing search results for topic: '{}', input length: {} chars", topic, rawSearchResults.length());
         long start = System.currentTimeMillis();
         jobService.appendStageEvent(jobId, "SUMMARIZE", "start", "Starting summarization for: " + topic);
@@ -41,8 +42,8 @@ public class SummarizerAgent {
                 .build();
 
         jobService.appendStageEvent(jobId, "SUMMARIZE", "activity", "Generating summary...");
-        String summary = anthropicClient.messages().create(params)
-                .content()
+        Message response = anthropicClient.messages().create(params);
+        String summary = response.content()
                 .stream()
                 .flatMap(block -> block.text().stream())
                 .map(textBlock -> textBlock.text())
@@ -50,6 +51,6 @@ public class SummarizerAgent {
 
         log.info("Summarization completed in {}ms, summary length: {} chars", System.currentTimeMillis() - start, summary.length());
         jobService.appendStageEvent(jobId, "SUMMARIZE", "end", "Summarization complete, " + summary.length() + " chars");
-        return summary;
+        return new AgentResult(summary, response.usage().inputTokens(), response.usage().outputTokens());
     }
 }

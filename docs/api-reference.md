@@ -17,6 +17,17 @@ Base path: `/api/jobs`
 
 **Status values:** `PENDING`, `IN_PROGRESS`, `COMPLETED`, `FAILED`
 
+## JobResponseDto extra fields (GET /api/jobs/{id} only)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `stages` | `JobStageDto[]` | Per-pipeline-stage progress records |
+| `totalInputTokens` | `long` | Accumulated input tokens across all agent calls |
+| `totalOutputTokens` | `long` | Accumulated output tokens across all agent calls |
+| `modelId` | `string` | Server-configured model ID (e.g. `claude-haiku-4-5`) |
+
+The frontend uses `modelId` to look up per-token pricing in a client-side table and renders an estimated cost badge on the report view.
+
 ## SSE stream
 
 `GET /api/jobs/{id}/stream` — each event is a plain text log line. Stream closes when the job completes or fails.

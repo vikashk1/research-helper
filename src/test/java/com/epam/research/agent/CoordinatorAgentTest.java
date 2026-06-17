@@ -43,9 +43,9 @@ class CoordinatorAgentTest {
     }
 
     private void stubHappyPath() {
-        when(webSearchAgent.search(eq(JOB_ID), anyString(), anyString())).thenReturn("raw results");
-        when(summarizerAgent.summarize(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("# Report");
+        when(webSearchAgent.search(eq(JOB_ID), anyString(), anyString())).thenReturn(new AgentResult("raw results", 100L, 50L));
+        when(summarizerAgent.summarize(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn(new AgentResult("summary", 80L, 40L));
+        when(reportFormatterAgent.format(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn(new AgentResult("# Report", 120L, 60L));
     }
 
     @Test
@@ -85,9 +85,9 @@ class CoordinatorAgentTest {
     void should_succeedAfterRetry_when_searchFailsOnFirstAttempt() {
         when(webSearchAgent.search(eq(JOB_ID), anyString(), anyString()))
                 .thenThrow(new RuntimeException("temporary"))
-                .thenReturn("raw results");
-        when(summarizerAgent.summarize(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("summary");
-        when(reportFormatterAgent.format(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn("# Report");
+                .thenReturn(new AgentResult("raw results", 100L, 50L));
+        when(summarizerAgent.summarize(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn(new AgentResult("summary", 80L, 40L));
+        when(reportFormatterAgent.format(eq(JOB_ID), anyString(), anyString(), anyString())).thenReturn(new AgentResult("# Report", 120L, 60L));
 
         coordinatorAgent.runPipeline(JOB_ID, TOPIC, ANSWERS);
 

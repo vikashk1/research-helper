@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ public class JobService {
     private final SseService sseService;
     private final ObjectMapper objectMapper;
 
+    @Value("${anthropic.model:claude-haiku-4-5}")
+    private String modelId;
+
     public List<String> getClarificationQuestions(String topic) {
         return clarificationAgent.generateQuestions(topic);
     }
@@ -38,6 +42,7 @@ public class JobService {
         job.setTopic(topic);
         job.setClarificationAnswers(clarificationAnswers);
         job.setStatus(JobStatus.PENDING);
+        job.setModelId(this.modelId);
         Job saved = jobRepository.save(job);
         log.info("Job {} created for topic: '{}'", saved.getId(), topic);
         return saved;
@@ -161,6 +166,15 @@ public class JobService {
     }
 
     @Transactional
+    public void addTokenUsage(Long jobId, long inputTokens, long outputTokens) {
+        Job job = getJob(jobId);
+        job.setTotalInputTokens(job.getTotalInputTokens() + inputTokens);
+        job.setTotalOutputTokens(job.getTotalOutputTokens() + outputTokens);
+        jobRepository.save(job);
+        log.debug("Job {} token usage updated: +{} input, +{} output tokens", jobId, inputTokens, outputTokens);
+    }
+
+    @Transactional
     public void deleteJob(Long jobId) {
         Job job = getJob(jobId);
         jobLogRepository.deleteAllByJobId(jobId);
@@ -189,6 +203,8 @@ public class JobService {
         job.setStatus(JobStatus.PENDING);
         job.setReport(null);
         job.setErrorMessage(null);
+        job.setTotalInputTokens(0);
+        job.setTotalOutputTokens(0);
         Job saved = jobRepository.save(job);
         log.info("Job {} restarted", jobId);
         return saved;

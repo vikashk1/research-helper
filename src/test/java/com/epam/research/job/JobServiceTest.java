@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.test.util.ReflectionTestUtils;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,6 +48,11 @@ class JobServiceTest {
 
     @InjectMocks
     private JobService jobService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(jobService, "modelId", "claude-haiku-4-5");
+    }
 
     // --- getJob ---
 
@@ -266,6 +273,17 @@ class JobServiceTest {
         assertThat(result.getId()).isEqualTo(42L);
     }
 
+    @Test
+    void should_setModelId_when_jobCreated() {
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.createJob("quantum computing", Map.of());
+
+        ArgumentCaptor<Job> jobCaptor = ArgumentCaptor.forClass(Job.class);
+        verify(jobRepository).save(jobCaptor.capture());
+        assertThat(jobCaptor.getValue().getModelId()).isEqualTo("claude-haiku-4-5");
+    }
+
     // --- getJobResponse ---
 
     @Test
@@ -316,6 +334,49 @@ class JobServiceTest {
 
         assertThatThrownBy(() -> jobService.getJobResponse(99L))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    // --- addTokenUsage ---
+
+    @Test
+    void should_accumulateTokenCounts_when_addTokenUsageCalled() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setTotalInputTokens(50L);
+        job.setTotalOutputTokens(20L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        jobService.addTokenUsage(1L, 100L, 200L);
+
+        assertThat(job.getTotalInputTokens()).isEqualTo(150L);
+        assertThat(job.getTotalOutputTokens()).isEqualTo(220L);
+        verify(jobRepository).save(job);
+    }
+
+    @Test
+    void should_throw_when_addTokenUsage_jobNotFound() {
+        when(jobRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> jobService.addTokenUsage(99L, 10L, 10L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Job not found");
+    }
+
+    @Test
+    void should_resetTokenCounters_when_jobRestarted() {
+        Job job = new Job();
+        job.setId(1L);
+        job.setStatus(JobStatus.FAILED);
+        job.setTotalInputTokens(500L);
+        job.setTotalOutputTokens(300L);
+        when(jobRepository.findById(1L)).thenReturn(Optional.of(job));
+        when(jobRepository.save(any(Job.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Job result = jobService.restartJob(1L);
+
+        assertThat(result.getTotalInputTokens()).isEqualTo(0L);
+        assertThat(result.getTotalOutputTokens()).isEqualTo(0L);
     }
 
     // --- appendStageEvent ---

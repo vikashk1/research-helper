@@ -1,4 +1,49 @@
 // ----------------------------------------------------------------
+// Pricing table — keyed by server-supplied modelId.
+// Add rows here as new models are deployed; all values are USD per million tokens.
+// ----------------------------------------------------------------
+const MODEL_PRICING = {
+  'claude-haiku-4-5':          { inputPerM: 0.80,  outputPerM: 4.00  },
+  'claude-haiku-3-5':          { inputPerM: 0.80,  outputPerM: 4.00  },
+  'claude-sonnet-4-5':         { inputPerM: 3.00,  outputPerM: 15.00 },
+  'claude-sonnet-4':           { inputPerM: 3.00,  outputPerM: 15.00 },
+  'claude-sonnet-3-7':         { inputPerM: 3.00,  outputPerM: 15.00 },
+  'claude-opus-4':             { inputPerM: 15.00, outputPerM: 75.00 },
+  'claude-3-opus-20240229':    { inputPerM: 15.00, outputPerM: 75.00 },
+};
+
+/**
+ * Compute estimated USD cost from token counts and model ID.
+ * Returns null for costUsd when the model is not in the pricing table.
+ * @param {number} inputTokens
+ * @param {number} outputTokens
+ * @param {string|null|undefined} modelId
+ * @returns {{ totalTokens: number, costUsd: number|null }}
+ */
+function computeTokenCost(inputTokens, outputTokens, modelId) {
+  const totalTokens = (inputTokens || 0) + (outputTokens || 0);
+  const pricing = modelId ? MODEL_PRICING[modelId] : null;
+  if (!pricing) {
+    return { totalTokens, costUsd: null };
+  }
+  const costUsd =
+    ((inputTokens  || 0) / 1_000_000) * pricing.inputPerM +
+    ((outputTokens || 0) / 1_000_000) * pricing.outputPerM;
+  return { totalTokens, costUsd };
+}
+
+/**
+ * Format token count as e.g. "12.3k" or "1.2M".
+ * @param {number} n
+ * @returns {string}
+ */
+function formatTokenCount(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+  return String(n);
+}
+
+// ----------------------------------------------------------------
 // State
 // ----------------------------------------------------------------
 let currentStep      = 1;
@@ -164,6 +209,9 @@ async function loadSidebar() {
     const hasCompleted = jobs.some(j => j.status === 'COMPLETED');
     clearBtn.classList.toggle('hidden', !hasCompleted);
 
+    // Aggregate token usage across all jobs for the sidebar footer
+    renderSidebarTokenFooter(jobs);
+
     if (jobs.length === 0) {
       list.innerHTML = '<p class="text-slate-400 dark:text-slate-500 text-sm px-2 py-4 text-center">No jobs yet.</p>';
       return;
@@ -225,7 +273,58 @@ async function loadSidebar() {
     });
   } catch (e) {
     list.innerHTML = `<p class="text-red-600 dark:text-red-400 text-sm px-2 py-4 text-center">Failed to load jobs</p>`;
+    renderSidebarTokenFooter([]);
   }
+}
+
+/**
+ * Render (or hide) the aggregate token-usage footer in the sidebar.
+ * Costs are computed per-job using each job's own modelId so that mixed-model
+ * pipelines are priced correctly. Jobs with an unknown modelId still contribute
+ * to the token total; cost is omitted only when no job has a priced model.
+ * @param {Array} jobs  — raw Job objects from GET /api/jobs (include modelId field)
+ */
+function renderSidebarTokenFooter(jobs) {
+  const footer = document.getElementById('sidebar-token-footer');
+  if (!footer) return;
+
+  const completedJobs = jobs.filter(j => j.status === 'COMPLETED');
+  if (completedJobs.length === 0) {
+    footer.classList.add('hidden');
+    return;
+  }
+
+  let totalTokens   = 0;
+  let totalCostUsd  = 0;
+  let hasPricedCost = false;
+
+  completedJobs.forEach(j => {
+    const { totalTokens: jobTokens, costUsd } = computeTokenCost(
+      j.totalInputTokens  || 0,
+      j.totalOutputTokens || 0,
+      j.modelId
+    );
+    totalTokens += jobTokens;
+    if (costUsd !== null) {
+      totalCostUsd  += costUsd;
+      hasPricedCost  = true;
+    }
+  });
+
+  const countEl = footer.querySelector('.sidebar-token-count');
+  const costEl  = footer.querySelector('.sidebar-token-cost');
+  if (countEl) countEl.textContent = `~${formatTokenCount(totalTokens)} tokens`;
+  if (costEl) {
+    if (hasPricedCost) {
+      costEl.textContent = `$${totalCostUsd.toFixed(4)} est.`;
+      costEl.classList.remove('hidden');
+    } else {
+      costEl.textContent = '';
+      costEl.classList.add('hidden');
+    }
+  }
+
+  footer.classList.remove('hidden');
 }
 
 function escapeHtml(str) {
@@ -308,6 +407,27 @@ async function loadJob(jobId, topic, status) {
 
 function renderReport(job) {
   document.getElementById('step4-topic-label').textContent = job.topic || '';
+
+  // Render token usage / cost badge when token data is available
+  const badgeEl = document.getElementById('step4-cost-badge');
+  const inputTokens  = job.totalInputTokens  || 0;
+  const outputTokens = job.totalOutputTokens || 0;
+  if (badgeEl) {
+    if (inputTokens > 0 || outputTokens > 0) {
+      const { totalTokens, costUsd } = computeTokenCost(inputTokens, outputTokens, job.modelId);
+      const tokensLabel = `~${formatTokenCount(totalTokens)} tokens`;
+      const costLabel = costUsd !== null
+        ? ` / $${costUsd.toFixed(4)}`
+        : '';
+      const modelLabel = job.modelId ? ` (${job.modelId})` : '';
+      badgeEl.textContent = tokensLabel + costLabel + modelLabel;
+      badgeEl.title = `Input: ${inputTokens.toLocaleString()} tokens, Output: ${outputTokens.toLocaleString()} tokens`;
+      badgeEl.classList.remove('hidden');
+    } else {
+      badgeEl.classList.add('hidden');
+    }
+  }
+
   const reportEl = document.getElementById('report-content');
   reportEl.innerHTML = job.report
     ? marked.parse(job.report)

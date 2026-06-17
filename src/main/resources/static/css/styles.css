@@ -13,6 +13,10 @@
   --color-link:          #2563eb; /* blue-600  */
   --color-blockquote:    #475569; /* slate-600 */
   --color-th-bg:         #e2e8f0; /* slate-200 */
+  /* cost badge */
+  --color-badge-bg:      #dbeafe; /* blue-100 */
+  --color-badge-text:    #1d4ed8; /* blue-700 */
+  --color-badge-border:  #93c5fd; /* blue-300 */
 }
 
 /* -----------------------------------------------------------------------
@@ -31,6 +35,10 @@
     --color-link:          #60a5fa; /* blue-400  */
     --color-blockquote:    #94a3b8; /* slate-400 */
     --color-th-bg:         #1e293b; /* slate-800 */
+    /* cost badge */
+    --color-badge-bg:     rgba(30, 58, 138, 0.35); /* blue-900/35 */
+    --color-badge-text:   #93c5fd;                  /* blue-300   */
+    --color-badge-border: #1d4ed8;                  /* blue-700   */
   }
 }
 
@@ -141,6 +149,26 @@
 .accordion-log::-webkit-scrollbar       { width: 6px; }
 .accordion-log::-webkit-scrollbar-track { background: var(--color-scrollbar-track); }
 .accordion-log::-webkit-scrollbar-thumb { background: var(--color-scrollbar-thumb); border-radius: 3px; }
+
+/* -----------------------------------------------------------------------
+ * Token usage / cost badge (Step 4)
+ * ----------------------------------------------------------------------- */
+.cost-badge {
+  display: inline-block;
+  background: var(--color-badge-bg);
+  color: var(--color-badge-text);
+  border: 1px solid var(--color-badge-border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.65rem;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.cost-badge.hidden {
+  display: none;
+}
 
 /* -----------------------------------------------------------------------
  * Markdown report styling

@@ -97,7 +97,7 @@ class JobControllerTest {
     void should_returnJob_when_getByIdEndpointCalled() throws Exception {
         JobResponseDto dto = new JobResponseDto(
                 1L, "quantum computing", null, JobStatus.COMPLETED,
-                "# Quantum Report", null, null, null, List.of());
+                "# Quantum Report", null, null, null, List.of(), 0L, 0L, "claude-haiku-4-5");
 
         when(jobService.getJobResponse(1L)).thenReturn(dto);
 
@@ -114,7 +114,7 @@ class JobControllerTest {
         JobStageDto stageDto = new JobStageDto(PipelineStage.SEARCH, JobStageStatus.COMPLETED, null, null);
         JobResponseDto dto = new JobResponseDto(
                 1L, "quantum computing", null, JobStatus.COMPLETED,
-                "# Report", null, null, null, List.of(stageDto));
+                "# Report", null, null, null, List.of(stageDto), 0L, 0L, "claude-haiku-4-5");
 
         when(jobService.getJobResponse(1L)).thenReturn(dto);
 

@@ -52,15 +52,18 @@ public class CoordinatorAgent {
 
             log.debug("Clarification context built ({} Q&A pairs)", clarificationAnswers.size());
 
-            String rawResults = withRetry(() -> webSearchAgent.search(jobId, topic, context));
+            AgentResult searchResult = withRetry(() -> webSearchAgent.search(jobId, topic, context));
+            jobService.addTokenUsage(jobId, searchResult.inputTokens(), searchResult.outputTokens());
             jobService.appendLog(jobId, "Search complete");
 
-            String summary = withRetry(() -> summarizerAgent.summarize(jobId, topic, context, rawResults));
+            AgentResult summaryResult = withRetry(() -> summarizerAgent.summarize(jobId, topic, context, searchResult.content()));
+            jobService.addTokenUsage(jobId, summaryResult.inputTokens(), summaryResult.outputTokens());
             jobService.appendLog(jobId, "Summary complete");
 
-            String report = withRetry(() -> reportFormatterAgent.format(jobId, topic, context, summary));
+            AgentResult reportResult = withRetry(() -> reportFormatterAgent.format(jobId, topic, context, summaryResult.content()));
+            jobService.addTokenUsage(jobId, reportResult.inputTokens(), reportResult.outputTokens());
 
-            jobService.markCompleted(jobId, report);
+            jobService.markCompleted(jobId, reportResult.content());
             sseService.complete(jobId);
             log.info("Pipeline completed for job {} in {}ms", jobId, System.currentTimeMillis() - pipelineStart);
         } catch (Exception e) {

@@ -50,6 +50,17 @@
       <div id="job-list" class="flex-1 overflow-y-auto px-2 py-2 space-y-1">
         <p class="text-slate-400 dark:text-slate-500 text-sm px-2 py-4 text-center">Loading jobs...</p>
       </div>
+      <!-- Aggregate token usage footer — hidden until there are completed jobs -->
+      <div id="sidebar-token-footer"
+        class="hidden shrink-0 border-t border-slate-300 dark:border-slate-700 px-4 py-2.5 sidebar-token-footer">
+        <div class="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span class="font-medium">Total usage</span>
+          <div class="flex items-center gap-2">
+            <span class="sidebar-token-count font-mono"></span>
+            <span class="sidebar-token-cost font-mono text-emerald-700 dark:text-emerald-400 font-semibold"></span>
+          </div>
+        </div>
+      </div>
     </aside>
 
     <!-- MAIN AREA -->
@@ -266,6 +277,7 @@
             <div>
               <h2 class="text-2xl font-bold mb-1">Research Report</h2>
               <p id="step4-topic-label" class="text-slate-500 dark:text-slate-400 text-sm"></p>
+              <span id="step4-cost-badge" class="cost-badge hidden mt-1"></span>
             </div>
             <button id="new-research-btn"
               class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm flex items-center gap-2">
