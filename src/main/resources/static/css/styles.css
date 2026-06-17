@@ -171,6 +171,29 @@
 }
 
 /* -----------------------------------------------------------------------
+ * KaTeX math rendering
+ * ----------------------------------------------------------------------- */
+
+/* Display-mode math: center block equations and add vertical spacing */
+#report-content .math-display {
+  display: block;
+  text-align: center;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+/* KaTeX rendered display block (added by auto-render) */
+#report-content .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+/* Inline math sits naturally in the text flow — no extra spacing needed */
+#report-content .math-inline {
+  display: inline;
+}
+
+/* -----------------------------------------------------------------------
  * Markdown report styling
  * ----------------------------------------------------------------------- */
 #report-content h1 { font-size: 1.75rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
