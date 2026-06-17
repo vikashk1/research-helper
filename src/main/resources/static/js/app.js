@@ -415,9 +415,7 @@ function renderReport(job) {
   if (badgeEl) {
     if (inputTokens > 0 || outputTokens > 0) {
       const { totalTokens, costUsd } = computeTokenCost(inputTokens, outputTokens, job.modelId);
-      const tokensLabel = totalTokens >= 1000
-        ? `~${(totalTokens / 1000).toFixed(1)}k tokens`
-        : `${totalTokens} tokens`;
+      const tokensLabel = `~${formatTokenCount(totalTokens)} tokens`;
       const costLabel = costUsd !== null
         ? ` / $${costUsd.toFixed(4)}`
         : '';
