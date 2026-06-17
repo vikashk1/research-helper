@@ -424,6 +424,22 @@ async function loadJob(jobId, topic, status) {
  * @returns {string}         — Markdown with math placeholders replaced by
  *                             safe HTML spans ready for KaTeX auto-render
  */
+/**
+ * Escape characters that are unsafe inside an HTML attribute or text node so
+ * that raw LaTeX content cannot break out of its containing <span> before
+ * KaTeX has a chance to render it.
+ *
+ * @param {string} tex  — raw LaTeX string extracted from the Markdown
+ * @returns {string}    — HTML-safe version of the LaTeX string
+ */
+function escapeTex(tex) {
+  return tex
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function protectMathInMarkdown(markdown) {
   const placeholders = [];
 
@@ -433,7 +449,8 @@ function protectMathInMarkdown(markdown) {
     const idx = placeholders.length;
     // Use a <span> with data attribute; KaTeX auto-render is configured to
     // handle \[…\] delimiters — we store the LaTeX in that form.
-    placeholders.push(`<span class="math-display">\\[${tex}\\]</span>`);
+    // Escape tex before embedding in HTML to prevent XSS.
+    placeholders.push(`<span class="math-display">\\[${escapeTex(tex)}\\]</span>`);
     return `MATHPLACEHOLDER_${idx}_END`;
   });
 
@@ -441,16 +458,19 @@ function protectMathInMarkdown(markdown) {
   // Pattern: single $ not followed/preceded by another $, with non-empty content.
   result = result.replace(/(?<!\$)\$(?!\$)([^$\n]+?)(?<!\$)\$(?!\$)/g, (_match, tex) => {
     const idx = placeholders.length;
-    placeholders.push(`<span class="math-inline">\\(${tex}\\)</span>`);
+    // Escape tex before embedding in HTML to prevent XSS.
+    placeholders.push(`<span class="math-inline">\\(${escapeTex(tex)}\\)</span>`);
     return `MATHPLACEHOLDER_${idx}_END`;
   });
 
   // Parse the placeholder-substituted Markdown with marked
   let html = marked.parse(result);
 
-  // Restore the math HTML spans
+  // Restore the math HTML spans.
+  // Use split/join instead of String.replace to substitute ALL occurrences
+  // (String.replace with a plain string only replaces the first match).
   placeholders.forEach((replacement, idx) => {
-    html = html.replace(`MATHPLACEHOLDER_${idx}_END`, replacement);
+    html = html.split(`MATHPLACEHOLDER_${idx}_END`).join(replacement);
   });
 
   return html;
@@ -465,30 +485,35 @@ function protectMathInMarkdown(markdown) {
  * @param {HTMLElement} containerEl
  */
 function renderMathInReport(containerEl) {
+  // Shared KaTeX auto-render options — extracted here to avoid duplication
+  // across the immediate and the deferred retry code paths.
+  const katexOptions = {
+    delimiters: [
+      { left: '\\[', right: '\\]', display: true  },
+      { left: '\\(', right: '\\)', display: false },
+    ],
+    throwOnError: false,
+  };
+
   if (typeof renderMathInElement !== 'function') {
     // KaTeX auto-render not yet loaded — try again briefly after a tick.
     // This handles the case where the deferred script hasn't executed yet
     // on the very first page load.
     setTimeout(() => {
       if (typeof renderMathInElement === 'function') {
-        renderMathInElement(containerEl, {
-          delimiters: [
-            { left: '\\[', right: '\\]', display: true  },
-            { left: '\\(', right: '\\)', display: false },
-          ],
-          throwOnError: false,
-        });
+        renderMathInElement(containerEl, katexOptions);
+      } else {
+        // Still absent after the retry window — CDN blocked or offline.
+        // Raw \[...\] and \(...\) strings will remain visible in the report.
+        console.warn(
+          'KaTeX auto-render is unavailable (CDN blocked or offline). ' +
+          'Math formulas will be displayed as raw LaTeX.'
+        );
       }
     }, 300);
     return;
   }
-  renderMathInElement(containerEl, {
-    delimiters: [
-      { left: '\\[', right: '\\]', display: true  },
-      { left: '\\(', right: '\\)', display: false },
-    ],
-    throwOnError: false,
-  });
+  renderMathInElement(containerEl, katexOptions);
 }
 
 function renderReport(job) {
