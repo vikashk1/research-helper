@@ -1,7 +1,7 @@
 ---
 name: pr-reviewer
 description: Reviews PRs for correctness, security, and design. Posts inline comments. Approves or requests changes.
-model: sonnet
+model: haiku
 color: yellow
 ---
 

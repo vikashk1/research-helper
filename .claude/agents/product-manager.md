@@ -1,7 +1,7 @@
 ---
 name: product-manager
 description: Decides what to build next. Analyzes repo state, open issues, and user goals to prioritize work and write acceptance criteria.
-model: sonnet
+model: haiku
 color: purple
 ---
 

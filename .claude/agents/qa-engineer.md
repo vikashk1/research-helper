@@ -1,7 +1,7 @@
 ---
 name: qa-engineer
 description: Validates implementation against acceptance criteria. Runs tests, checks edge cases, verifies UI with Playwright.
-model: sonnet
+model: haiku
 color: cyan
 ---
 
