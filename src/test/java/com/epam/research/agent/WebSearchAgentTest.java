@@ -10,6 +10,7 @@ import com.anthropic.models.messages.ToolUnion;
 import com.anthropic.models.messages.Usage;
 import com.anthropic.services.blocking.MessageService;
 import com.epam.research.job.JobService;
+import com.epam.research.agent.AgentResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,7 +42,6 @@ class WebSearchAgentTest {
     @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
-    @Mock private Usage usage;
     @Mock private JobService jobService;
 
     @InjectMocks
@@ -63,32 +63,20 @@ class WebSearchAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
     }
 
     @Test
     void should_returnSearchResults_when_validTopicAndContextProvided() {
         stubApiCall("Found relevant results about climate change research.");
 
-        String result = webSearchAgent.search(JOB_ID, "climate change", "focus on 2020-2025, academic sources");
+        AgentResult result = webSearchAgent.search(JOB_ID, "climate change", "focus on 2020-2025, academic sources");
 
-        assertThat(result).isEqualTo("Found relevant results about climate change research.");
+        assertThat(result.content()).isEqualTo("Found relevant results about climate change research.");
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("start"), contains("climate change"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Generating search queries for: climate change"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Executing web search..."));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("activity"), contains("Web search results retrieved"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SEARCH"), eq("end"), contains("Web search complete"));
-    }
-
-    @Test
-    void should_callAddTokenUsage_when_searchCompletes() {
-        stubApiCall("results");
-
-        webSearchAgent.search(JOB_ID, "topic", "context");
-
-        verify(jobService).addTokenUsage(JOB_ID, 100L, 50L);
     }
 
     @Test
@@ -138,9 +126,10 @@ class WebSearchAgentTest {
         when(usage.inputTokens()).thenReturn(1200L);
         when(usage.outputTokens()).thenReturn(300L);
 
-        webSearchAgent.search(JOB_ID, "AI trends", "context");
+        AgentResult result = webSearchAgent.search(JOB_ID, "AI trends", "context");
 
-        verify(jobService).addTokenUsage(JOB_ID, 1200L, 300L);
+        assertThat(result.inputTokens()).isEqualTo(1200L);
+        assertThat(result.outputTokens()).isEqualTo(300L);
     }
 
     @Test
@@ -151,13 +140,10 @@ class WebSearchAgentTest {
         when(usage.inputTokens()).thenReturn(0L);
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = webSearchAgent.search(JOB_ID, "topic", "context");
+        AgentResult result = webSearchAgent.search(JOB_ID, "topic", "context");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -169,13 +155,10 @@ class WebSearchAgentTest {
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = webSearchAgent.search(JOB_ID, "topic", "context");
+        AgentResult result = webSearchAgent.search(JOB_ID, "topic", "context");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -193,12 +176,9 @@ class WebSearchAgentTest {
         when(textBlock.text()).thenReturn("First part.");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Second part.");
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = webSearchAgent.search(JOB_ID, "topic", "context");
+        AgentResult result = webSearchAgent.search(JOB_ID, "topic", "context");
 
-        assertThat(result).contains("First part.").contains("Second part.");
+        assertThat(result.content()).contains("First part.").contains("Second part.");
     }
 }

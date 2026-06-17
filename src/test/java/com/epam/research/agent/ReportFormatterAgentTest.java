@@ -9,6 +9,7 @@ import com.anthropic.models.messages.TextBlock;
 import com.anthropic.models.messages.Usage;
 import com.anthropic.services.blocking.MessageService;
 import com.epam.research.job.JobService;
+import com.epam.research.agent.AgentResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +40,6 @@ class ReportFormatterAgentTest {
     @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
-    @Mock private Usage usage;
     @Mock private JobService jobService;
 
     @InjectMocks
@@ -61,19 +61,16 @@ class ReportFormatterAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
     }
 
     @Test
     void should_returnFormattedReport_when_validInputsProvided() {
         stubApiCall("# Climate Change Report\n\n## Key Findings\n...");
 
-        String result = reportFormatterAgent.format(
+        AgentResult result = reportFormatterAgent.format(
                 JOB_ID, "climate change", "focus on 2020-2025", "Summarized content...");
 
-        assertThat(result).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
+        assertThat(result.content()).isEqualTo("# Climate Change Report\n\n## Key Findings\n...");
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("start"), contains("climate change"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("activity"), contains("Assembling report sections..."));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("activity"), contains("Report formatting complete"));
@@ -124,9 +121,10 @@ class ReportFormatterAgentTest {
     void should_callAddTokenUsage_when_formatCompletes() {
         stubApiCall("# Report");
 
-        reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
+        AgentResult result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
-        verify(jobService).addTokenUsage(JOB_ID, 80L, 40L);
+        assertThat(result.inputTokens()).isEqualTo(80L);
+        assertThat(result.outputTokens()).isEqualTo(40L);
     }
 
     @Test
@@ -137,13 +135,10 @@ class ReportFormatterAgentTest {
         when(usage.inputTokens()).thenReturn(0L);
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
+        AgentResult result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -155,13 +150,10 @@ class ReportFormatterAgentTest {
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
+        AgentResult result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -179,12 +171,9 @@ class ReportFormatterAgentTest {
         when(textBlock.text()).thenReturn("# Section One");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("## Section Two");
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
+        AgentResult result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
-        assertThat(result).contains("# Section One").contains("## Section Two");
+        assertThat(result.content()).contains("# Section One").contains("## Section Two");
     }
 }

@@ -23,7 +23,7 @@ public class WebSearchAgent {
     private final AnthropicClient anthropicClient;
     private final JobService jobService;
 
-    public String search(Long jobId, String topic, String clarificationContext) {
+    public AgentResult search(Long jobId, String topic, String clarificationContext) {
         log.info("Starting web search for topic: '{}'", topic);
         long start = System.currentTimeMillis();
         jobService.appendStageEvent(jobId, "SEARCH", "start", "Starting web search for: " + topic);
@@ -43,7 +43,6 @@ public class WebSearchAgent {
 
         jobService.appendStageEvent(jobId, "SEARCH", "activity", "Executing web search...");
         Message response = anthropicClient.messages().create(params);
-        jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
         String result = response.content()
                 .stream()
                 .flatMap(block -> block.text().stream())
@@ -53,6 +52,6 @@ public class WebSearchAgent {
         jobService.appendStageEvent(jobId, "SEARCH", "activity", "Web search results retrieved");
         log.info("Web search completed in {}ms, result length: {} chars", System.currentTimeMillis() - start, result.length());
         jobService.appendStageEvent(jobId, "SEARCH", "end", "Web search complete, " + result.length() + " chars");
-        return result;
+        return new AgentResult(result, response.usage().inputTokens(), response.usage().outputTokens());
     }
 }

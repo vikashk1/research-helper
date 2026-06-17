@@ -24,7 +24,7 @@ public class ReportFormatterAgent {
     private final AnthropicClient anthropicClient;
     private final JobService jobService;
 
-    public String format(Long jobId, String topic, String clarificationContext, String summarizedContent) {
+    public AgentResult format(Long jobId, String topic, String clarificationContext, String summarizedContent) {
         log.info("Formatting report for topic: '{}', summary length: {} chars", topic, summarizedContent.length());
         long start = System.currentTimeMillis();
         jobService.appendStageEvent(jobId, "FORMAT", "start", "Starting report formatting for: " + topic);
@@ -43,7 +43,6 @@ public class ReportFormatterAgent {
                 .build();
 
         Message response = anthropicClient.messages().create(params);
-        jobService.addTokenUsage(jobId, response.usage().inputTokens(), response.usage().outputTokens());
         String report = response.content()
                 .stream()
                 .flatMap(block -> block.text().stream())
@@ -53,6 +52,6 @@ public class ReportFormatterAgent {
         jobService.appendStageEvent(jobId, "FORMAT", "activity", "Report formatting complete");
         log.info("Report formatted in {}ms, report length: {} chars", System.currentTimeMillis() - start, report.length());
         jobService.appendStageEvent(jobId, "FORMAT", "end", "Report formatting complete, " + report.length() + " chars");
-        return report;
+        return new AgentResult(report, response.usage().inputTokens(), response.usage().outputTokens());
     }
 }

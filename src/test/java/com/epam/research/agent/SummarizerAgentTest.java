@@ -9,6 +9,7 @@ import com.anthropic.models.messages.TextBlock;
 import com.anthropic.models.messages.Usage;
 import com.anthropic.services.blocking.MessageService;
 import com.epam.research.job.JobService;
+import com.epam.research.agent.AgentResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +40,6 @@ class SummarizerAgentTest {
     @Mock private Usage usage;
     @Mock private ContentBlock contentBlock;
     @Mock private TextBlock textBlock;
-    @Mock private Usage usage;
     @Mock private JobService jobService;
 
     @InjectMocks
@@ -61,19 +61,16 @@ class SummarizerAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
     }
 
     @Test
     void should_returnSummary_when_validInputsProvided() {
         stubApiCall("Key findings: climate change is accelerating.");
 
-        String result = summarizerAgent.summarize(
+        AgentResult result = summarizerAgent.summarize(
                 JOB_ID, "climate change", "focus on 2020-2025", "Raw search result data...");
 
-        assertThat(result).isEqualTo("Key findings: climate change is accelerating.");
+        assertThat(result.content()).isEqualTo("Key findings: climate change is accelerating.");
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("start"), contains("climate change"));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("activity"), contains("Analyzing search results..."));
         verify(jobService).appendStageEvent(eq(JOB_ID), eq("SUMMARIZE"), eq("activity"), contains("Generating summary..."));
@@ -124,9 +121,10 @@ class SummarizerAgentTest {
     void should_callAddTokenUsage_when_summarizeCompletes() {
         stubApiCall("summary");
 
-        summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
+        AgentResult result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
-        verify(jobService).addTokenUsage(JOB_ID, 120L, 60L);
+        assertThat(result.inputTokens()).isEqualTo(120L);
+        assertThat(result.outputTokens()).isEqualTo(60L);
     }
 
     @Test
@@ -137,13 +135,10 @@ class SummarizerAgentTest {
         when(usage.inputTokens()).thenReturn(0L);
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of());
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
+        AgentResult result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -155,13 +150,10 @@ class SummarizerAgentTest {
         when(usage.outputTokens()).thenReturn(0L);
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.empty());
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
+        AgentResult result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
-        assertThat(result).isEmpty();
+        assertThat(result.content()).isEmpty();
     }
 
     @Test
@@ -179,12 +171,9 @@ class SummarizerAgentTest {
         when(textBlock.text()).thenReturn("Part one.");
         when(secondBlock.text()).thenReturn(Optional.of(secondTextBlock));
         when(secondTextBlock.text()).thenReturn("Part two.");
-        when(message.usage()).thenReturn(usage);
-        when(usage.inputTokens()).thenReturn(100L);
-        when(usage.outputTokens()).thenReturn(50L);
 
-        String result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
+        AgentResult result = summarizerAgent.summarize(JOB_ID, "topic", "context", "results");
 
-        assertThat(result).contains("Part one.").contains("Part two.");
+        assertThat(result.content()).contains("Part one.").contains("Part two.");
     }
 }

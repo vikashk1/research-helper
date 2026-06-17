@@ -405,35 +405,6 @@ async function loadJob(jobId, topic, status) {
   }
 }
 
-// ----------------------------------------------------------------
-// Token / cost helpers
-// ----------------------------------------------------------------
-// claude-haiku-4-5 pricing (USD per million tokens)
-const HAIKU_INPUT_PRICE_PER_M  = 0.80;
-const HAIKU_OUTPUT_PRICE_PER_M = 4.00;
-
-/**
- * Compute estimated USD cost from raw token counts.
- * @param {number} inputTokens
- * @param {number} outputTokens
- * @returns {number} cost in USD
- */
-function estimateCost(inputTokens, outputTokens) {
-  return (inputTokens  / 1_000_000) * HAIKU_INPUT_PRICE_PER_M
-       + (outputTokens / 1_000_000) * HAIKU_OUTPUT_PRICE_PER_M;
-}
-
-/**
- * Format token count as e.g. "12.3k" or "1.2M".
- * @param {number} n
- * @returns {string}
- */
-function formatTokenCount(n) {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
-  return String(n);
-}
-
 function renderReport(job) {
   document.getElementById('step4-topic-label').textContent = job.topic || '';
 
