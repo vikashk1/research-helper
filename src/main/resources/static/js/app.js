@@ -405,6 +405,92 @@ async function loadJob(jobId, topic, status) {
   }
 }
 
+// ----------------------------------------------------------------
+// Math rendering helpers (KaTeX)
+// ----------------------------------------------------------------
+
+/**
+ * Extract all LaTeX math spans from a Markdown string, replace each with a
+ * unique placeholder, then restore them in the final HTML string — BEFORE
+ * marked.parse touches the text.  This prevents marked from escaping
+ * backslashes inside math expressions (e.g. \frac would become \\frac).
+ *
+ * Display math: $$...$$ is wrapped in a <span> that KaTeX auto-render will
+ * pick up as a display-mode block.  Inline math: $...$ is wrapped in a <span>
+ * for inline rendering.  We use <span> wrappers so the raw LaTeX is never
+ * interpreted as Markdown syntax.
+ *
+ * @param {string} markdown  — raw report Markdown
+ * @returns {string}         — Markdown with math placeholders replaced by
+ *                             safe HTML spans ready for KaTeX auto-render
+ */
+function protectMathInMarkdown(markdown) {
+  const placeholders = [];
+
+  // Replace display math ($$...$$) first so the $$ tokens are consumed before
+  // single-$ matching runs.
+  let result = markdown.replace(/\$\$([\s\S]+?)\$\$/g, (_match, tex) => {
+    const idx = placeholders.length;
+    // Use a <span> with data attribute; KaTeX auto-render is configured to
+    // handle \[…\] delimiters — we store the LaTeX in that form.
+    placeholders.push(`<span class="math-display">\\[${tex}\\]</span>`);
+    return `MATHPLACEHOLDER_${idx}_END`;
+  });
+
+  // Replace inline math ($...$) — skip lone $ signs (e.g. USD amounts).
+  // Pattern: single $ not followed/preceded by another $, with non-empty content.
+  result = result.replace(/(?<!\$)\$(?!\$)([^$\n]+?)(?<!\$)\$(?!\$)/g, (_match, tex) => {
+    const idx = placeholders.length;
+    placeholders.push(`<span class="math-inline">\\(${tex}\\)</span>`);
+    return `MATHPLACEHOLDER_${idx}_END`;
+  });
+
+  // Parse the placeholder-substituted Markdown with marked
+  let html = marked.parse(result);
+
+  // Restore the math HTML spans
+  placeholders.forEach((replacement, idx) => {
+    html = html.replace(`MATHPLACEHOLDER_${idx}_END`, replacement);
+  });
+
+  return html;
+}
+
+/**
+ * After the report HTML has been written to the DOM, trigger KaTeX rendering
+ * on the report container.  This is safe to call whether or not KaTeX has
+ * finished loading — it will no-op gracefully if the library is absent
+ * (e.g. CDN blocked, offline environment).
+ *
+ * @param {HTMLElement} containerEl
+ */
+function renderMathInReport(containerEl) {
+  if (typeof renderMathInElement !== 'function') {
+    // KaTeX auto-render not yet loaded — try again briefly after a tick.
+    // This handles the case where the deferred script hasn't executed yet
+    // on the very first page load.
+    setTimeout(() => {
+      if (typeof renderMathInElement === 'function') {
+        renderMathInElement(containerEl, {
+          delimiters: [
+            { left: '\\[', right: '\\]', display: true  },
+            { left: '\\(', right: '\\)', display: false },
+          ],
+          throwOnError: false,
+        });
+      }
+    }, 300);
+    return;
+  }
+  renderMathInElement(containerEl, {
+    delimiters: [
+      { left: '\\[', right: '\\]', display: true  },
+      { left: '\\(', right: '\\)', display: false },
+    ],
+    throwOnError: false,
+  });
+}
+
 function renderReport(job) {
   document.getElementById('step4-topic-label').textContent = job.topic || '';
 
@@ -429,9 +515,12 @@ function renderReport(job) {
   }
 
   const reportEl = document.getElementById('report-content');
-  reportEl.innerHTML = job.report
-    ? marked.parse(job.report)
-    : '<p class="text-slate-400 dark:text-slate-400 italic">No report content available.</p>';
+  if (job.report) {
+    reportEl.innerHTML = protectMathInMarkdown(job.report);
+    renderMathInReport(reportEl);
+  } else {
+    reportEl.innerHTML = '<p class="text-slate-400 dark:text-slate-400 italic">No report content available.</p>';
+  }
   goToStep(4);
 }
 
