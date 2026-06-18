@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import com.anthropic.models.messages.StopReason;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,6 +62,7 @@ class ReportFormatterAgentTest {
         when(message.content()).thenReturn(List.of(contentBlock));
         when(contentBlock.text()).thenReturn(Optional.of(textBlock));
         when(textBlock.text()).thenReturn(responseText);
+        when(message.stopReason()).thenReturn(Optional.of(StopReason.END_TURN));
     }
 
     @Test
@@ -114,7 +116,7 @@ class ReportFormatterAgentTest {
         verify(messageService).create(captor.capture());
         MessageCreateParams params = captor.getValue();
         assertThat(params.model()).isEqualTo(Model.CLAUDE_HAIKU_4_5);
-        assertThat(params.maxTokens()).isGreaterThanOrEqualTo(2048L);
+        assertThat(params.maxTokens()).isGreaterThanOrEqualTo(8192L);
     }
 
     @Test
@@ -175,5 +177,28 @@ class ReportFormatterAgentTest {
         AgentResult result = reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
 
         assertThat(result.content()).contains("# Section One").contains("## Section Two");
+    }
+
+    @Test
+    void should_logWarningAndAppendEvent_when_stopReasonIsMaxTokens() {
+        stubApiCall("# Truncated Report");
+        when(message.stopReason()).thenReturn(Optional.of(StopReason.MAX_TOKENS));
+
+        reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
+
+        verify(jobService).appendStageEvent(eq(JOB_ID), eq("FORMAT"), eq("warning"),
+                contains("truncated due to token limit"));
+    }
+
+    @Test
+    void should_captureStopReason_when_responseReceived() {
+        stubApiCall("# Report");
+        when(message.stopReason()).thenReturn(Optional.of(StopReason.END_TURN));
+        ArgumentCaptor<MessageCreateParams> captor = ArgumentCaptor.forClass(MessageCreateParams.class);
+
+        reportFormatterAgent.format(JOB_ID, "topic", "context", "summary");
+
+        verify(messageService).create(captor.capture());
+        assertThat(captor.getValue().maxTokens()).isEqualTo(8192L);
     }
 }
