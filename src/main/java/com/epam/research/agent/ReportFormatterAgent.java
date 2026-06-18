@@ -37,7 +37,7 @@ public class ReportFormatterAgent {
 
         MessageCreateParams params = MessageCreateParams.builder()
                 .model(Model.CLAUDE_HAIKU_4_5)
-                .maxTokens(2048L)
+                .maxTokens(8192L)
                 .system(SYSTEM_PROMPT)
                 .addUserMessage(userMessage)
                 .build();
@@ -49,8 +49,14 @@ public class ReportFormatterAgent {
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
 
+        String stopReason = response.stopReason().map(Object::toString).orElse("unknown");
+        if ("max_tokens".equals(stopReason)) {
+            log.warn("Report formatting truncated due to max_tokens limit. Job ID: {}, report length: {} chars", jobId, report.length());
+            jobService.appendStageEvent(jobId, "FORMAT", "warning", "Report was truncated due to token limit");
+        }
+
         jobService.appendStageEvent(jobId, "FORMAT", "activity", "Report formatting complete");
-        log.info("Report formatted in {}ms, report length: {} chars", System.currentTimeMillis() - start, report.length());
+        log.info("Report formatted in {}ms, report length: {} chars, stopReason: {}", System.currentTimeMillis() - start, report.length(), stopReason);
         jobService.appendStageEvent(jobId, "FORMAT", "end", "Report formatting complete, " + report.length() + " chars");
         return new AgentResult(report, response.usage().inputTokens(), response.usage().outputTokens());
     }

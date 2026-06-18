@@ -36,7 +36,7 @@ public class SummarizerAgent {
 
         MessageCreateParams params = MessageCreateParams.builder()
                 .model(Model.CLAUDE_HAIKU_4_5)
-                .maxTokens(2048L)
+                .maxTokens(8192L)
                 .system(SYSTEM_PROMPT)
                 .addUserMessage(userMessage)
                 .build();
@@ -49,7 +49,13 @@ public class SummarizerAgent {
                 .map(textBlock -> textBlock.text())
                 .collect(Collectors.joining("\n"));
 
-        log.info("Summarization completed in {}ms, summary length: {} chars", System.currentTimeMillis() - start, summary.length());
+        String stopReason = response.stopReason().map(Object::toString).orElse("unknown");
+        if ("max_tokens".equals(stopReason)) {
+            log.warn("Summarization truncated due to max_tokens limit. Job ID: {}, summary length: {} chars", jobId, summary.length());
+            jobService.appendStageEvent(jobId, "SUMMARIZE", "warning", "Summary was truncated due to token limit");
+        }
+
+        log.info("Summarization completed in {}ms, summary length: {} chars, stopReason: {}", System.currentTimeMillis() - start, summary.length(), stopReason);
         jobService.appendStageEvent(jobId, "SUMMARIZE", "end", "Summarization complete, " + summary.length() + " chars");
         return new AgentResult(summary, response.usage().inputTokens(), response.usage().outputTokens());
     }
