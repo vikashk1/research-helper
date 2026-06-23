@@ -9,6 +9,8 @@ Base path: `/api/jobs`
 | `GET` | `/api/jobs` | List all jobs (newest first) |
 | `GET` | `/api/jobs/{id}` | Get a single job |
 | `POST` | `/api/jobs/{id}/restart` | Restart a failed job |
+| `DELETE` | `/api/jobs/{id}` | Delete a single job (204 NO_CONTENT) |
+| `DELETE` | `/api/jobs/completed` | Delete all completed jobs; returns `{"deleted": N}` |
 | `GET` | `/api/jobs/{id}/stream` | SSE stream of live log lines |
 
 ## Job fields

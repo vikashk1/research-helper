@@ -57,7 +57,11 @@ User submits topic
 ```
 research-helper/
 ├── src/main/java/com/epam/research/
+│   ├── config/
+│   │   ├── AnthropicConfig.java
+│   │   └── OpenApiConfig.java
 │   ├── agent/
+│   │   ├── AgentResult.java      (record: content, inputTokens, outputTokens)
 │   │   ├── ClarificationAgent.java
 │   │   ├── CoordinatorAgent.java
 │   │   ├── WebSearchAgent.java
@@ -66,7 +70,15 @@ research-helper/
 │   ├── job/
 │   │   ├── Job.java              (JPA entity)
 │   │   ├── JobLog.java           (JPA entity)
+│   │   ├── JobStage.java         (JPA entity)
+│   │   ├── JobStatus.java        (enum: PENDING, IN_PROGRESS, COMPLETED, FAILED)
+│   │   ├── JobStageStatus.java   (enum)
+│   │   ├── PipelineStage.java    (enum: SEARCH, SUMMARIZE, FORMAT)
 │   │   ├── JobRepository.java
+│   │   ├── JobLogRepository.java
+│   │   ├── JobStageRepository.java
+│   │   ├── JobResponseDto.java
+│   │   ├── JobStageDto.java
 │   │   ├── JobService.java
 │   │   └── JobController.java
 │   └── sse/
